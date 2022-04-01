@@ -1,0 +1,34 @@
+{
+    "name": "initphp/database",
+    "description": "PHP PDO Database Library",
+    "keywords": ["php", "pdo", "orm", "model", "entity", "query-builder", "database", "dbal"],
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "InitPHP\\Database\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Test\\InitPHP\\Database\\": "tests/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Muhammet ŞAFAK",
+            "email": "info@muhammetsafak.com.tr",
+            "role": "Developer",
+            "homepage": "https://www.muhammetsafak.com.tr"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": ">=7.4",
+        "ext-pdo": "*",
+        "initphp/validation": "^1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "9.5"
+    }
+}
