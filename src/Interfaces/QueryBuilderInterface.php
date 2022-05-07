@@ -65,6 +65,30 @@ interface QueryBuilderInterface
     public function selectCount(string $column): QueryBuilderInterface;
 
     /**
+     * SELECT MAX($column)
+     *
+     * @param string $column
+     * @return QueryBuilderInterface
+     */
+    public function selectMax(string $column): QueryBuilderInterface;
+
+    /**
+     * SELECT MIN($column)
+     *
+     * @param string $column
+     * @return QueryBuilderInterface
+     */
+    public function selectMin(string $column): QueryBuilderInterface;
+
+    /**
+     * SELECT AVG($column)
+     *
+     * @param string $column
+     * @return QueryBuilderInterface
+     */
+    public function selectAvg(string $column): QueryBuilderInterface;
+
+    /**
      * SELECT $column AS $alias
      *
      * @param string $column
@@ -74,12 +98,73 @@ interface QueryBuilderInterface
     public function selectAs(string $column, string $alias): QueryBuilderInterface;
 
     /**
+     * SELECT UPPER($column)
+     *
+     * @param string $column
+     * @return QueryBuilderInterface
+     */
+    public function selectUpper(string $column): QueryBuilderInterface;
+
+    /**
+     * SELECT LOWER($column)
+     *
+     * @param string $column
+     * @return QueryBuilderInterface
+     */
+    public function selectLower(string $column): QueryBuilderInterface;
+
+    /**
+     * SELECT LENGTH($column)
+     *
+     * @param string $column
+     * @return QueryBuilderInterface
+     */
+    public function selectLength(string $column): QueryBuilderInterface;
+
+    /**
+     * SELECT MID($column, $offset, $length)
+     *
+     * @param string $column
+     * @param int $offset
+     * @param int $length
+     * @return QueryBuilderInterface
+     */
+    public function selectMid(string $column, int $offset, int $length): QueryBuilderInterface;
+
+    /**
+     * SELECT LEFT($column, $length)
+     *
+     * @param string $column
+     * @param int $length
+     * @return QueryBuilderInterface
+     */
+    public function selectLeft(string $column, int $length): QueryBuilderInterface;
+
+    /**
+     * SELECT RIGHT($column, $length)
+     *
+     * @param string $column
+     * @param int $length
+     * @return QueryBuilderInterface
+     */
+    public function selectRight(string $column, int $length): QueryBuilderInterface;
+
+    /**
      * SELECT DISTINCT($column)
      *
      * @param string $column <p>Column name</p>
      * @return QueryBuilderInterface
      */
     public function selectDistinct(string $column): QueryBuilderInterface;
+
+    /**
+     * SELECT COALESCE($column, $default)
+     *
+     * @param string $column
+     * @param string|int $default
+     * @return QueryBuilderInterface
+     */
+    public function selectCoalesce(string $column, $default = '0'): QueryBuilderInterface;
 
     /**
      * FROM $table

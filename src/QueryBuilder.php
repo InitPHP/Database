@@ -139,7 +139,34 @@ trait QueryBuilder
      */
     public function selectCount(string $column): self
     {
-        $this->prepareSelect($column, null, 'count');
+        $this->prepareSelect($column, null, 'COUNT');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectMax(string $column): self
+    {
+        $this->prepareSelect($column, null, 'MAX');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectMin(string $column): self
+    {
+        $this->prepareSelect($column, null, 'MIN');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectAvg(string $column): self
+    {
+        $this->prepareSelect($column, null, 'AVG');
         return $this;
     }
 
@@ -155,9 +182,79 @@ trait QueryBuilder
     /**
      * @inheritDoc
      */
+    public function selectUpper(string $column): self
+    {
+        $this->prepareSelect($column, null, 'UPPER', '{function}({column})');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectLower(string $column): self
+    {
+        $this->prepareSelect($column, null, 'LOWER', '{function}({column})');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectLength(string $column): self
+    {
+        $this->prepareSelect($column, null, 'LENGTH', '{function}({column})');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectMid(string $column, int $offset, int $length): self
+    {
+        $this->prepareSelect($column, null, 'MID', '{function}({column}, ' . $offset . ', ' . $length . ')');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectLeft(string $column, int $length): self
+    {
+        $this->prepareSelect($column, null, 'LEFT', '{function}({column}, ' . $length . ')');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectRight(string $column, int $length): self
+    {
+        $this->prepareSelect($column, null, 'RIGHT', '{function}({column}, ' . $length . ')');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function selectDistinct(string $column): self
     {
         $this->prepareSelect($column, null, 'DISTINCT');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectCoalesce(string $column, $default = '0'): self
+    {
+        if(!is_numeric($default)){
+            if(((bool)preg_match('/^[a-zA-Z\d]+\.[a-zA-Z\d]+$/', $default)) !== FALSE){
+                $default = $this->tableDotColumnSplitAndCombine($default);
+            }else{
+                $default = "'" . str_replace("'", "\'", trim($default, "\\'\" \r\n")) . "'";
+            }
+        }
+        $this->prepareSelect($column, null, 'COALESCE', '{function}({column}, ' . $default . ')');
         return $this;
     }
 
@@ -1063,11 +1160,20 @@ trait QueryBuilder
         return $this->argumentPrepare($value[0]) . ' AND ' . $this->argumentPrepare($value[1]);
     }
 
-    private function prepareSelect($column, ?string $alias = null, ?string $fn = null)
+    private function aliasStatementPrepare(string $statement)
+    {
+        if(stripos($statement, ' as ') === FALSE){
+            return false;
+        }
+        $statement = str_replace(' AS ', ' as ', $statement);
+        return explode(' as ', $statement);
+    }
+
+    private function prepareSelect($column, ?string $alias = null, ?string $fn = null, ?string $pattern  = null)
     {
         if(is_array($column)){
             foreach ($column as $item) {
-                $this->prepareSelect($item);
+                $this->prepareSelect($item, $alias, $fn, $pattern);
             }
             return;
         }
@@ -1076,17 +1182,15 @@ trait QueryBuilder
             return;
         }
         if(strpos($column, ',') !== FALSE){
-            $this->prepareSelect(explode(',', $column));
+            $this->prepareSelect(explode(',', $column), $alias, $fn, $pattern);
             return;
         }
-        if(stripos($column, ' as ') !== FALSE){
-            $column = str_replace(' AS ', ' as ', $column);
-            $split = explode(' as ', $column);
-            $this->prepareSelect($split[0], $split[1]);
+        if(($split = $this->aliasStatementPrepare($column)) !== FALSE){
+            $this->prepareSelect($split[0], $split[1], $fn, $pattern);
             return;
         }
         if(((bool)preg_match('/([\w\_]+)\((.+)\)$/iu', $column, $parse)) !== FALSE){
-            $this->prepareSelect($parse[2], $alias, $parse[1]);
+            $this->prepareSelect($parse[2], $alias, $parse[1], $pattern);
             return;
         }
         if($alias !== null){
@@ -1094,7 +1198,17 @@ trait QueryBuilder
         }
         $select = $this->tableDotColumnSplitAndCombine($column);
         if(!empty($fn)){
-            $select = strtoupper($fn) . '(' .$select . ')';
+            if(!empty($pattern)){
+                $select = str_replace([
+                    '{column}',
+                    '{function}',
+                ], [
+                    $select,
+                    strtoupper($fn),
+                ], $pattern);
+            }else{
+                $select = strtoupper($fn) . '(' .$select . ')';
+            }
         }
         if(!empty($alias)){
             $select .= ' AS ' . $alias;

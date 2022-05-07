@@ -344,4 +344,30 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->clear();
     }
 
+    public function testSelectCoalesceSQLStatementBuild()
+    {
+
+        $this->db->select('post.title')
+            ->selectCoalesce('stat.view as view', 0)
+            ->from('post')
+            ->leftJoin('stat', 'stat.id=post.id')
+            ->where('post.id', 5);
+
+        $expected = 'SELECT p_post.title, COALESCE(p_stat.view, 0) AS view FROM p_post LEFT JOIN p_stat ON p_stat.id=p_post.id WHERE p_post.id = 5';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
+
+        $this->db->select('post.title')
+            ->selectCoalesce('stat.view as view', 'post.view')
+            ->from('post')
+            ->leftJoin('stat', 'stat.id=post.id')
+            ->where('post.id', 5);
+
+        $expected = 'SELECT p_post.title, COALESCE(p_stat.view, p_post.view) AS view FROM p_post LEFT JOIN p_stat ON p_stat.id=p_post.id WHERE p_post.id = 5';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
+    }
+
 }

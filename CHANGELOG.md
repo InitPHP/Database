@@ -1,6 +1,9 @@
 # Change Log
 
-## 1.0.1 [2022.05.07]
+## 1.0.1 [2022.05.08]
 
-- [QueryBuilder] Added `selectDistinct()` method.
-- [QueryBuilder] Added `regexp()`, `andRegexp()`, `orRegexp()` methods.
+- [QueryBuilder] Added methods : 
+  - `selectDistinct()`
+  - `selectCoalesce()`
+  - `regexp()`, `andRegexp()` and `orRegexp()`
+  - `selectMin()`, `selectMax()`, `selectAvg()`, `selectUpper()`, `selectLower()`, `selectLength()`, `selectMid()`, `selectLeft()`, `selectRight()`
