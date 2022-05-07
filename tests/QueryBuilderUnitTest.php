@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Database
  * @license    http://www.gnu.org/licenses/gpl-3.0.txt  GNU GPL 3.0
- * @version    1.0
+ * @version    1.0.1
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -217,6 +217,24 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         // If limit and offset are negative integers, their absolute values are taken.
         $expected = 'SELECT id FROM p_book LIMIT 25, 20';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
+    }
+
+    public function testSelectDistinctStatement()
+    {
+        $this->db->selectDistinct('name')
+            ->from('book');
+        $expected = 'SELECT DISTINCT(name) FROM p_book';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
+
+        $this->db->selectDistinct('author.name')
+                    ->from('book')
+                    ->innerJoin('author', 'author.id=book.author');
+        $expected = 'SELECT DISTINCT(p_author.name) FROM p_book INNER JOIN p_author ON p_author.id=p_book.author';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();

@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0
+ * @version    1.0.1
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -149,6 +149,15 @@ trait QueryBuilder
     public function selectAs(string $column, string $alias): self
     {
         $this->prepareSelect($column, $alias);
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function selectDistinct(string $column): self
+    {
+        $this->prepareSelect($column, null, 'DISTINCT');
         return $this;
     }
 
