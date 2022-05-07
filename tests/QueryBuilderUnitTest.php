@@ -322,4 +322,26 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->clear();
     }
 
+    public function testWhereSQLFunctionStatementBuild()
+    {
+        $this->db->from('post')
+            ->andBetween('date', ['2022-05-07', 'CURDATE()']);
+
+        $expected = 'SELECT * FROM p_post WHERE date BETWEEN "2022-05-07" AND CURDATE()';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
+    }
+
+    public function testWhereRegexpSQLStatementBuild()
+    {
+        $this->db->from('post')
+            ->regexp('title', '^M[a-z]K$');
+
+        $expected = 'SELECT * FROM p_post WHERE title REGEXP "^M[a-z]K$"';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
+    }
+
 }

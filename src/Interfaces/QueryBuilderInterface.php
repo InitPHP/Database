@@ -417,6 +417,34 @@ interface QueryBuilderInterface
     public function andNotIn(string $column, $value): QueryBuilderInterface;
 
     /**
+     * WHERE $column REGEXP "$value"
+     *
+     * @param string $column
+     * @param string $value
+     * @param string $logical [AND|OR]
+     * @return QueryBuilderInterface
+     */
+    public function regexp(string $column, string $value, string $logical = 'AND'): QueryBuilderInterface;
+
+    /**
+     * WHERE ... AND $column REGEXP "$value"
+     *
+     * @param string $column
+     * @param string $value
+     * @return QueryBuilderInterface
+     */
+    public function andRegexp(string $column, string $value): QueryBuilderInterface;
+
+    /**
+     * WHERE ... OR $column REGEXP "$value"
+     *
+     * @param string $column
+     * @param string $value
+     * @return QueryBuilderInterface
+     */
+    public function orRegexp(string $column, string $value): QueryBuilderInterface;
+
+    /**
      * WHERE column LIKE "%value%"
      *
      * @param string $column

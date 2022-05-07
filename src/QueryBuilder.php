@@ -670,6 +670,30 @@ trait QueryBuilder
     /**
      * @inheritDoc
      */
+    public function regexp(string $column, string $value, string $logical = 'AND'): self
+    {
+        return $this->where($column, $value, 'REGEXP', $logical);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function andRegexp(string $column, string $value): self
+    {
+        return $this->where($column, $value, 'REGEXP', 'AND');
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function orRegexp(string $column, string $value): self
+    {
+        return $this->where($column, $value, 'REGEXP', 'OR');
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function soundex(string $column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'SOUNDEX', $logical);
@@ -965,6 +989,8 @@ trait QueryBuilder
                 return $column . ' NOT LIKE "%' . trim($value, '\\"') . '"';
             case 'END_NOT_LIKE':
                 return $column . ' NOT LIKE "' . trim($value, '\\"') . '%"';
+            case 'REGEXP':
+                return $column . ' REGEXP "' . trim($value, '\\"') . '"';
             case 'BETWEEN':
                 return $column . ' BETWEEN ' . $this->betweenArgumentPrepare($value);
             case 'NOT_BETWEEN':
@@ -1019,12 +1045,14 @@ trait QueryBuilder
         }
         if(is_iterable($value)){
             foreach ($value as &$val) {
-                $this->escapeString($val);
+                $this->argumentPrepare($val);
             }
             return $value;
         }
-        $value = trim((string)$value);
         if(((bool)preg_match('/^:[\w]+$/', $value)) !== FALSE){
+            return $value;
+        }
+        if(((bool)preg_match('/^[A-Za-z]+\(\)$/', $value)) !== FALSE){
             return $value;
         }
         return '"' . $this->escapeString($value, Connection::ESCAPE_STR) . '"';
@@ -1032,9 +1060,7 @@ trait QueryBuilder
 
     private function betweenArgumentPrepare(array $value): string
     {
-        return (is_numeric($value[0]) ? $value[0] : '"' . $value[0] . '"')
-            . ' AND '
-            . (is_numeric($value[1]) ? $value[1] : '"' . $value[1] . '"');
+        return $this->argumentPrepare($value[0]) . ' AND ' . $this->argumentPrepare($value[1]);
     }
 
     private function prepareSelect($column, ?string $alias = null, ?string $fn = null)
