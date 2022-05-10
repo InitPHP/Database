@@ -240,7 +240,7 @@ class Model extends DB implements ModelInterface
             self::$_DBValidation = new Validation();
         }
         $this->validationMsgMergeAndSet();
-        parent::__construct($this->getProperty('connection'));
+        parent::__construct($this->getProperty('connection', []));
     }
 
     /**
