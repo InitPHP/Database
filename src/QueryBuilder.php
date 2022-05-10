@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.1
+ * @version    1.0.4
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -294,6 +294,9 @@ trait QueryBuilder
         }
 
         if($type === 'SELF'){
+            if(isset($this->table) && !in_array($this->table, $this->QB_From, true)){
+                $this->QB_From[] = $this->table;
+            }
             $this->QB_From[] = $table;
             $this->QB_Where[0]['AND'][] = trim(($this->_QB_Prefix . $stmt[1])) . '.' . $stmt[2]
                 . '='
