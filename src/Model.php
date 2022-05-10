@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0
+ * @version    1.0.2
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -39,6 +39,8 @@ use function array_merge;
 
 class Model extends DB implements ModelInterface
 {
+    use RelationshipsTrait;
+
     /**
      * @var string[]
      */
@@ -620,7 +622,7 @@ class Model extends DB implements ModelInterface
         return false;
     }
 
-    private final function callbacksFunctionHandler(array $data, string $method)
+    private function callbacksFunctionHandler(array $data, string $method)
     {
         if($this->getProperty('allowedCallbacks', true) === FALSE){
             return $data;

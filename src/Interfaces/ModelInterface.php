@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0
+ * @version    1.0.2
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 namespace InitPHP\Database\Interfaces;
 
-use InitPHP\Database\Exception\ModelPermissionException;
+use \InitPHP\Database\Exception\{ModelPermissionException, RelationshipsException};
 
 interface ModelInterface extends DBInterface
 {
@@ -54,6 +54,18 @@ interface ModelInterface extends DBInterface
      * @return array|false
      */
     public function save(EntityInterface $entity);
+
+    /**
+     * Belirtilen model için bir ilişkilendirme (join) yapar.
+     *
+     * @param string $model <p>The model class to associate with.</p>
+     * @param string|null $fromColumn <p>The column name of the current model to use for association. If it is NULL, the primary key is used.</p>
+     * @param string|null $targetColumn <p>Column name to use for association within the target model/table. If it is NULL, the primary key is used.</p>
+     * @param string $joinType <p>'INNER', 'LEFT', 'RIGHT', 'LEFT OUTER', 'RIGHT OUTER' or 'SELF'</p>
+     * @return ModelInterface
+     * @throws RelationshipsException
+     */
+    public function relations(string $model, ?string $fromColumn = null, ?string $targetColumn = null, string $joinType = 'INNER'): ModelInterface;
 
     /**
      * Bir ya da daha fazla satırı ekler.
