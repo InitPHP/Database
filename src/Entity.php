@@ -18,6 +18,7 @@ namespace InitPHP\Database;
 use InitPHP\Database\Interfaces\EntityInterface;
 
 use function substr;
+use function str_ends_with;
 use function method_exists;
 use function explode;
 use function ucfirst;
@@ -42,7 +43,7 @@ class Entity implements EntityInterface
 
     public function __call($name, $arguments)
     {
-        if(substr($name, -9) !== 'Attribute'){
+        if(str_ends_with($name, 'Attribute') === FALSE){
             throw new \RuntimeException('There is no ' . $name . ' method.');
         }
         $startWith = substr($name, 0, 3);
@@ -52,7 +53,8 @@ class Entity implements EntityInterface
         }
         if($startWith === 'set'){
             $key = $this->camelCaseAttributeNameNormalize(substr($name, 3, -9));
-            return $this->DBAttributes[$key] = $arguments[0];
+            $this->DBAttributes[$key] = $arguments[0];
+            return $this;
         }
         throw new \RuntimeException('There is no ' . $name . ' method.');
     }
