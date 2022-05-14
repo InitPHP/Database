@@ -20,19 +20,11 @@ use InitPHP\Database\Interfaces\EntityInterface;
 use function substr;
 use function str_ends_with;
 use function method_exists;
-use function explode;
-use function ucfirst;
-use function array_search;
-use function preg_split;
-use function strtolower;
-use function lcfirst;
 
 class Entity implements EntityInterface
 {
 
     protected array $DBAttributes = [];
-
-    protected array $DBCamelCaseAttributeNames = [];
 
     protected array $DBOriginalAttributes = [];
 
@@ -47,13 +39,15 @@ class Entity implements EntityInterface
             throw new \RuntimeException('There is no ' . $name . ' method.');
         }
         $startWith = substr($name, 0, 3);
-        if($startWith === 'get' && empty($arguments)){
-            $key = $this->camelCaseAttributeNameNormalize(substr($name, 3, -9));
-            return $this->DBAttributes[$key] ?? null;
+        if($startWith === 'get'){
+            $attrCamelCase = substr($name, 3, -9);
+            $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
+            return $this->DBAttributes[$attributeName] ?? null;
         }
         if($startWith === 'set'){
-            $key = $this->camelCaseAttributeNameNormalize(substr($name, 3, -9));
-            $this->DBAttributes[$key] = $arguments[0];
+            $attrCamelCase = substr($name, 3, -9);
+            $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
+            $this->DBAttributes[$attributeName] = ($arguments[0] ?? '');
             return $this;
         }
         throw new \RuntimeException('There is no ' . $name . ' method.');
@@ -61,20 +55,23 @@ class Entity implements EntityInterface
 
     public function __set($key, $value)
     {
-        $attrName = $this->attributeName($key);
-        $method = 'set'.$attrName.'Attribute';
-        return $this->DBAttributes[$key] = method_exists($this, $method) ? $this->{$method}($value) : $value;
+        $attrName = Helper::attributeNameCamelCaseEncode($key);
+        $method = 'set' . $attrName . 'Attribute';
+        if(method_exists($this, $method)){
+            $this->{$method}($value);
+            return $value;
+        }
+        return $this->DBAttributes[$key] = $value;
     }
 
     public function __get($key)
     {
-        $attrName = $this->attributeName($key);
-        $method = 'get'.$attrName.'Attribute';
-        $value = $this->DBAttributes[$key] ?? ($this->DBAttributes[$attrName] ?? null);
+        $attrName = Helper::attributeNameCamelCaseEncode($key);
+        $method = 'get' . $attrName . 'Attribute';
         if(method_exists($this, $method)){
-            return $this->{$method}($value);
+            return $this->{$method}();
         }
-        return $value;
+        return $this->DBAttributes[$key] ?? null;
     }
 
     public function __isset($key)
@@ -119,32 +116,6 @@ class Entity implements EntityInterface
     {
         $this->DBOriginalAttributes = $this->DBAttributes;
         return $this;
-    }
-
-    private function attributeName(string $key): string
-    {
-        if(isset($this->DBCamelCaseAttributeNames[$key])){
-            return $this->DBCamelCaseAttributeNames[$key];
-        }
-        $attrName = '';
-        $parse = explode('_', $key);
-        foreach ($parse as $col) {
-            $attrName .= ucfirst($col);
-        }
-        return $this->DBCamelCaseAttributeNames[$key] = $attrName;
-    }
-
-    private function camelCaseAttributeNameNormalize(string $name): string
-    {
-        if(($key = array_search($name, $this->DBCamelCaseAttributeNames, true)) !== FALSE){
-            return $key;
-        }
-        $parse = preg_split('/(?=[A-Z])/', $name, -1, \PREG_SPLIT_NO_EMPTY);
-        $key = '';
-        foreach ($parse as $value) {
-            $key .= '_' . strtolower($value);
-        }
-        return isset($this->DBAttributes[$key]) ? $key : lcfirst($name);
     }
 
 }
