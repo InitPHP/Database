@@ -21,6 +21,8 @@ use \InitPHP\Database\Interfaces\{DBInterface, EntityInterface};
 use function is_string;
 use function is_object;
 use function trim;
+use function substr;
+use function str_starts_with;
 
 class DB extends Connection implements DBInterface
 {
@@ -52,6 +54,17 @@ class DB extends Connection implements DBInterface
             unset($configs['prefix']);
         }
         parent::__construct($configs);
+    }
+
+    public function __call($name, $arguments)
+    {
+        if(str_starts_with($name, 'findBy')){
+            $attrCamelCase = substr($name, 6);
+            $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
+            $this->where($attributeName, ...$arguments);
+            return $this;
+        }
+        return parent::__call($name, $arguments);
     }
 
     public function asConnectionGlobal()
@@ -179,6 +192,15 @@ class DB extends Connection implements DBInterface
             throw new \RuntimeException('The query must be executed with the DB::get() method before the column is retrieved.');
         }
         return $this->_DBLastStatement->fetchColumn($column);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setParameter(string $name, $value): self
+    {
+        $this->_DBArguments[$name] = $value;
+        return $this;
     }
 
     /**

@@ -115,7 +115,18 @@ interface DBInterface extends QueryBuilderInterface
     public function column(int $column = 0);
 
     /**
-     * Varsa SQL cümlesi içindeki parametreleri tanımlar.
+     * Varsa SQL cümlesi içindeki bir parametreyi tanımlar/ekler.
+     *
+     * Belirtilen parametreler DB::get() yöntemi ile sorgu yürütülürken \PDO::execute() işlevine aktarılır.
+     *
+     * @param string $name
+     * @param string|int $value
+     * @return DBInterface
+     */
+    public function setParameter(string $name, $value): DBInterface;
+
+    /**
+     * Varsa SQL cümlesi içindeki parametreleri tanımlar. Bu tüm parametreleri tek seferde tanımlar yani kendisinden önce tanımlanmış parametreleri yok sayar. Tek tek tanımlama yapmak için DBInterface::setParameter() yöntemini kullanın.
      *
      * Belirtilen parametreler DB::get() yöntemi ile sorgu yürütülürken \PDO::execute() işlevine aktarılır.
      *
