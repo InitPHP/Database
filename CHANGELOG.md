@@ -1,10 +1,16 @@
 # Change Log
 
-## 1.0.2 [2022.05.10]
+## [2022.05.14]
+
+- `DB::__call()` : Defined for `findBy*()` methods.
+- Added `DB::setParameter()` method.
+- Created the Helper class to handle PHP functions only.
+
+## [2022.05.10]
 
 - [Model] Added `relations()` method for easier linking between models.
 
-## 1.0.1 [2022.05.08]
+## [2022.05.08]
 
 - [QueryBuilder] Added methods : 
   - `selectDistinct()`
