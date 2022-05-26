@@ -38,7 +38,6 @@ $db = (new DB([
     'password'  => '',
     'charset'   => 'utf8mb4',
     'collation' => 'utf8mb4_general_ci',
-    'prefix'    => 'blog_', // Table Prefix
 ]))->connection();
 
 // If you are working with a single database, do not forget to make your connection global.
@@ -62,7 +61,7 @@ $isInsert = $db->from('post')
 /**
 * This executes the following query.
 * 
-* INSERT INTO blog_post 
+* INSERT INTO post 
 * (title, content) 
 * VALUES 
 * ("Post Title", "Post Content");
@@ -94,7 +93,7 @@ $isInsert = $db->from('post')
 /**
 * This executes the following query.
 * 
-* INSERT INTO blog_post 
+* INSERT INTO post 
 * (title, content, author) 
 * VALUES 
 * ("Post Title 1", "Post Content 1", 5),
@@ -121,10 +120,10 @@ $db->select('user.name as author_name', 'post.id', 'post.title')
 /**
 * This executes the following query.
 * 
-* SELECT blog_user.name AS author_name, blog_post.id, blog_post.title 
-* FROM blog_post, blog_user 
-* WHERE blog_user.id = blog_post.author AND blog_post.status = 1
-* ORDER BY blog_post ASC, blog_post.created_at DESC
+* SELECT user.name AS author_name, post.id, post.title 
+* FROM post, user 
+* WHERE user.id = post.author AND post.status = 1
+* ORDER BY post ASC, post.created_at DESC
 * LIMIT 20, 10
 */
 $db->get(); // Install the SQL statement, execute, and reset the Query Builder.
@@ -151,7 +150,7 @@ $isUpdate = $db->from('post')
 /**
 * This executes the following query.
 * 
-* UPDATE blog_post 
+* UPDATE post 
 * SET title = "New Title", content = "New Content"
 * WHERE id = 13
 */
@@ -171,7 +170,7 @@ $isDelete = $db->from('post')
 /**
 * This executes the following query.
 * 
-* DELETE FROM blog_post WHERE id = 13
+* DELETE FROM post WHERE id = 13
 */
 if ($isUpdate) {
     // Success

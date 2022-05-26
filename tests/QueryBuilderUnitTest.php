@@ -24,7 +24,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
     protected function setUp(): void
     {
-        $this->db = new DB(['prefix' => 'p_']);
+        $this->db = new DB([]);
         parent::setUp();
     }
 
@@ -34,7 +34,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->select('id', 'name');
         $this->db->from('user');
 
-        $expected = "SELECT id, name FROM p_user";
+        $expected = "SELECT id, name FROM user";
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -44,7 +44,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
     {
         $this->db->from('post');
 
-        $expected = 'SELECT * FROM p_post';
+        $expected = 'SELECT * FROM post';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -56,7 +56,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post');
         $this->db->selfJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT p_post.id, p_post.title, p_user.name AS authorName FROM p_post, p_user WHERE p_user.id=p_post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post, user WHERE user.id=post.user";
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -68,7 +68,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post');
         $this->db->innerJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT p_post.id, p_post.title, p_user.name AS authorName FROM p_post INNER JOIN p_user ON p_user.id=p_post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post INNER JOIN user ON user.id=post.user";
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -80,7 +80,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post');
         $this->db->leftJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT p_post.id, p_post.title, p_user.name AS authorName FROM p_post LEFT JOIN p_user ON p_user.id=p_post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post LEFT JOIN user ON user.id=post.user";
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -92,7 +92,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post');
         $this->db->rightJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT p_post.id, p_post.title, p_user.name AS authorName FROM p_post RIGHT JOIN p_user ON p_user.id=p_post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post RIGHT JOIN user ON user.id=post.user";
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -104,7 +104,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post');
         $this->db->leftOuterJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT p_post.id, p_post.title, p_user.name AS authorName FROM p_post LEFT OUTER JOIN p_user ON p_user.id=p_post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post LEFT OUTER JOIN user ON user.id=post.user";
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -116,7 +116,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post');
         $this->db->rightOuterJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT p_post.id, p_post.title, p_user.name AS authorName FROM p_post RIGHT OUTER JOIN p_user ON p_user.id=p_post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post RIGHT OUTER JOIN user ON user.id=post.user";
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -136,7 +136,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             })
             ->andWhere('post.status', true);
 
-        $expected = 'SELECT * FROM p_post, p_user WHERE p_user.id=p_post.user AND p_post.status = 1 AND (p_user.group = "admin" OR p_user.group = "editor" AND (p_post.publish = 1 AND p_user.status = 1))';
+        $expected = 'SELECT * FROM post, user WHERE user.id=post.user AND post.status = 1 AND (user.group = "admin" OR user.group = "editor" AND (post.publish = 1 AND user.status = 1))';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -150,7 +150,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->groupBy('typeId')
             ->having('typeId', [1,2,3], 'IN');
 
-        $expected = 'SELECT typeId, COUNT(*) FROM p_book GROUP BY typeId HAVING typeId IN (1, 2, 3)';
+        $expected = 'SELECT typeId, COUNT(*) FROM book GROUP BY typeId HAVING typeId IN (1, 2, 3)';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -164,7 +164,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->andWhereInject('type != 1 && status = 1')
             ->orWhereInject('author = 5');
 
-        $expected = 'SELECT id FROM p_book WHERE id = 10 AND type != 1 && status = 1 OR author = 5';
+        $expected = 'SELECT id FROM book WHERE id = 10 AND type != 1 && status = 1 OR author = 5';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -176,7 +176,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->from('book')
             ->limit(5);
 
-        $expected = 'SELECT id FROM p_book LIMIT 5';
+        $expected = 'SELECT id FROM book LIMIT 5';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -189,7 +189,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->offset(5);
 
         // Offset is specified If no limit is specified; The limit is 1000.
-        $expected = 'SELECT id FROM p_book LIMIT 5, 1000';
+        $expected = 'SELECT id FROM book LIMIT 5, 1000';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -202,7 +202,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->offset(50)
             ->limit(25);
 
-        $expected = 'SELECT id FROM p_book LIMIT 50, 25';
+        $expected = 'SELECT id FROM book LIMIT 50, 25';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -216,7 +216,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->limit(-20);
 
         // If limit and offset are negative integers, their absolute values are taken.
-        $expected = 'SELECT id FROM p_book LIMIT 25, 20';
+        $expected = 'SELECT id FROM book LIMIT 25, 20';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -226,7 +226,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
     {
         $this->db->selectDistinct('name')
             ->from('book');
-        $expected = 'SELECT DISTINCT(name) FROM p_book';
+        $expected = 'SELECT DISTINCT(name) FROM book';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -234,7 +234,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->selectDistinct('author.name')
                     ->from('book')
                     ->innerJoin('author', 'author.id=book.author');
-        $expected = 'SELECT DISTINCT(p_author.name) FROM p_book INNER JOIN p_author ON p_author.id=p_book.author';
+        $expected = 'SELECT DISTINCT(author.name) FROM book INNER JOIN author ON author.id=book.author';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -248,7 +248,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->orderBy('id', 'DESC')
             ->limit(10);
 
-        $expected = 'SELECT name FROM p_book ORDER BY authorId ASC, id DESC LIMIT 10';
+        $expected = 'SELECT name FROM book ORDER BY authorId ASC, id DESC LIMIT 10';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -265,7 +265,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             'status'    => true,
         ];
 
-        $expected = 'INSERT INTO p_post (title, content, author, status) VALUES ("Post Title", "Post Content", 5, 1);';
+        $expected = 'INSERT INTO post (title, content, author, status) VALUES ("Post Title", "Post Content", 5, 1);';
         $this->assertEquals($expected, $this->db->insertStatementBuild($data));
         $this->db->clear();
     }
@@ -288,7 +288,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ]
         ];
 
-        $expected = 'INSERT INTO p_post (title, content, author, status) VALUES ("Post Title #1", "Post Content #1", 5, 1), ("Post Title #2", "Post Content #2", NULL, 0);';
+        $expected = 'INSERT INTO post (title, content, author, status) VALUES ("Post Title #1", "Post Content #1", 5, 1), ("Post Title #2", "Post Content #2", NULL, 0);';
         $this->assertEquals($expected, $this->db->insertStatementBuild($data));
         $this->db->clear();
     }
@@ -304,7 +304,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             'status'    => false,
         ];
 
-        $expected = 'UPDATE p_post SET title = "New Title", status = 0 WHERE status = 1 LIMIT 5';
+        $expected = 'UPDATE post SET title = "New Title", status = 0 WHERE status = 1 LIMIT 5';
 
         $this->assertEquals($expected, $this->db->updateStatementBuild($data));
         $this->db->clear();
@@ -316,7 +316,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->where('authorId', 5)
             ->limit(100);
 
-        $expected = 'DELETE FROM p_post WHERE authorId = 5 LIMIT 100';
+        $expected = 'DELETE FROM post WHERE authorId = 5 LIMIT 100';
 
         $this->assertEquals($expected, $this->db->deleteStatementBuild());
         $this->db->clear();
@@ -327,7 +327,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post')
             ->andBetween('date', ['2022-05-07', 'CURDATE()']);
 
-        $expected = 'SELECT * FROM p_post WHERE date BETWEEN "2022-05-07" AND CURDATE()';
+        $expected = 'SELECT * FROM post WHERE date BETWEEN "2022-05-07" AND CURDATE()';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -338,7 +338,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post')
             ->regexp('title', '^M[a-z]K$');
 
-        $expected = 'SELECT * FROM p_post WHERE title REGEXP "^M[a-z]K$"';
+        $expected = 'SELECT * FROM post WHERE title REGEXP "^M[a-z]K$"';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -353,7 +353,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->leftJoin('stat', 'stat.id=post.id')
             ->where('post.id', 5);
 
-        $expected = 'SELECT p_post.title, COALESCE(p_stat.view, 0) AS view FROM p_post LEFT JOIN p_stat ON p_stat.id=p_post.id WHERE p_post.id = 5';
+        $expected = 'SELECT post.title, COALESCE(stat.view, 0) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = 5';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
@@ -364,7 +364,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->leftJoin('stat', 'stat.id=post.id')
             ->where('post.id', 5);
 
-        $expected = 'SELECT p_post.title, COALESCE(p_stat.view, p_post.view) AS view FROM p_post LEFT JOIN p_stat ON p_stat.id=p_post.id WHERE p_post.id = 5';
+        $expected = 'SELECT post.title, COALESCE(stat.view, post.view) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = 5';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();

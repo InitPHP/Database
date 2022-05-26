@@ -46,13 +46,6 @@ class DB extends Connection implements DBInterface
 
     public function __construct(array $configs = [])
     {
-        if(isset(static::$_QB_StaticPrefix)){
-            $this->_QB_Prefix = static::$_QB_StaticPrefix;
-        }
-        if(isset($configs['prefix'])){
-            $this->_QB_Prefix = $configs['prefix'];
-            unset($configs['prefix']);
-        }
         parent::__construct($configs);
     }
 

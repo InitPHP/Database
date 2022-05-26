@@ -43,8 +43,6 @@ trait QueryBuilder
 
     protected string $_QB_Prefix = '';
 
-    protected static string $_QB_StaticPrefix;
-
     private array $_supported_join_types = [
         'INNER', 'LEFT', 'RIGHT', 'LEFT OUTER', 'RIGHT OUTER', 'SELF'
     ];
@@ -248,9 +246,7 @@ trait QueryBuilder
     public function selectCoalesce(string $column, $default = '0'): self
     {
         if(!is_numeric($default)){
-            if(((bool)preg_match('/^[a-zA-Z\d]+\.[a-zA-Z\d]+$/', $default)) !== FALSE){
-                $default = $this->tableDotColumnSplitAndCombine($default);
-            }else{
+            if(((bool)preg_match('/^[a-zA-Z\d]+\.[a-zA-Z\d]+$/', $default)) === FALSE){
                 $default = "'" . str_replace("'", "\'", trim($default, "\\'\" \r\n")) . "'";
             }
         }
@@ -267,7 +263,6 @@ trait QueryBuilder
         if(!isset($this->table)){
             $this->table = $table;
         }
-        $table = $this->_QB_Prefix . $table;
         if(in_array($table, $this->QB_From, true) === FALSE){
             $this->QB_From[] = $table;
         }
@@ -283,8 +278,6 @@ trait QueryBuilder
         if(in_array($type, $this->_supported_join_types, true) === FALSE){
             throw new \InvalidArgumentException($type . ' Join type is not supported.');
         }
-
-        $table = trim(($this->_QB_Prefix . $table));
         if(isset($this->QB_Join[$table]) || in_array($table, $this->QB_From, true) !== FALSE){
             return $this;
         }
@@ -298,15 +291,15 @@ trait QueryBuilder
                 $this->QB_From[] = $this->table;
             }
             $this->QB_From[] = $table;
-            $this->QB_Where[0]['AND'][] = trim(($this->_QB_Prefix . $stmt[1])) . '.' . $stmt[2]
+            $this->QB_Where[0]['AND'][] = trim($stmt[1]) . '.' . $stmt[2]
                 . '='
-                . trim(($this->_QB_Prefix . $stmt[3])) . '.' . $stmt[4];
+                . trim($stmt[3]) . '.' . $stmt[4];
         }else{
             $this->QB_Join[$table] = $type . ' JOIN ' . $table
                 . ' ON '
-                . trim(($this->_QB_Prefix . $stmt[1])) . '.' . $stmt[2]
+                . trim($stmt[1]) . '.' . $stmt[2]
                 . '='
-                . trim(($this->_QB_Prefix . $stmt[3])) . '.' . $stmt[4];
+                . trim($stmt[3]) . '.' . $stmt[4];
         }
         return $this;
     }
@@ -457,7 +450,7 @@ trait QueryBuilder
         if(in_array($soft, ['ASC', 'DESC'], true) === FALSE){
             throw new \InvalidArgumentException('It can only sort as ASC or DESC.');
         }
-        $orderBy = $this->tableDotColumnSplitAndCombine($column) . ' ' . $soft;
+        $orderBy = $column . ' ' . $soft;
         if(in_array($orderBy, $this->QB_OrderBy, true) === FALSE){
             $this->QB_OrderBy[] = $orderBy;
         }
@@ -469,7 +462,7 @@ trait QueryBuilder
      */
     public function groupBy(string $column): self
     {
-        $group = $this->tableDotColumnSplitAndCombine($column);
+        $group = $column;
         if(in_array($group, $this->QB_GroupBy, true) === FALSE){
             $this->QB_GroupBy[] = $group;
         }
@@ -881,7 +874,7 @@ trait QueryBuilder
         $sql .= 'SELECT ' . implode(', ', $this->QB_Select);
 
         if(empty($this->QB_From) && isset($this->table)){
-            $this->QB_From[] = $this->_QB_Prefix . $this->table;
+            $this->QB_From[] = $this->table;
         }
         $sql .= ' FROM ' . implode(', ', $this->QB_From);
 
@@ -917,7 +910,7 @@ trait QueryBuilder
     public function insertStatementBuild(array $associativeData): string
     {
         $sql = 'INSERT INTO'
-            . ' ' . (!empty($this->QB_From) ? end($this->QB_From) : ($this->_QB_Prefix . ($this->table ?? '')));
+            . ' ' . (!empty($this->QB_From) ? end($this->QB_From) : ($this->table ?? ''));
         $columns = [];
         $values = [];
         if(count($associativeData) === count($associativeData, COUNT_RECURSIVE)){
@@ -969,7 +962,7 @@ trait QueryBuilder
     public function updateStatementBuild(array $associativeData): string
     {
         $sql = 'UPDATE'
-            . ' ' . (!empty($this->QB_From) ? end($this->QB_From) : ($this->_QB_Prefix . ($this->table ?? '')));
+            . ' ' . (!empty($this->QB_From) ? end($this->QB_From) : ($this->table ?? ''));
 
         $sets = [];
         foreach ($associativeData as $column => $value) {
@@ -998,7 +991,7 @@ trait QueryBuilder
     public function deleteStatementBuild(): string
     {
         $sql = 'DELETE FROM'
-            . ' ' . (!empty($this->QB_From) ? end($this->QB_From) : ($this->_QB_Prefix . ($this->table ?? '')));
+            . ' ' . (!empty($this->QB_From) ? end($this->QB_From) : ($this->table ?? ''));
 
         $where = $this->sqlWhereOrHavingStatementBuild('where');
         $sql .= ' WHERE ';
@@ -1058,7 +1051,7 @@ trait QueryBuilder
 
     private function whereOrHavingStatementPrepare(string $column, $value, string $mark = '='): string
     {
-        $column = $this->tableDotColumnSplitAndCombine($column);
+        $column = $column;
         $value = $this->argumentPrepare($value);
         $mark = trim($mark);
         if($mark === '='){
@@ -1199,7 +1192,7 @@ trait QueryBuilder
         if($alias !== null){
             $alias = trim($alias);
         }
-        $select = $this->tableDotColumnSplitAndCombine($column);
+        $select = $column;
         if(!empty($fn)){
             if(!empty($pattern)){
                 $select = str_replace([
@@ -1225,7 +1218,7 @@ trait QueryBuilder
     {
         if(strpos($tableDotColumn, '.') !== FALSE){
             $split = explode('.', $tableDotColumn, 2);
-            $table = trim(($this->_QB_Prefix . $split[0]));
+            $table = trim($split[0]);
             return $table . '.' . $split[1];
         }
         return $tableDotColumn;
