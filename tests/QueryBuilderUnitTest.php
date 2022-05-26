@@ -1,15 +1,4 @@
 <?php
-/**
- * QueryBuilderUnitTest.php
- *
- * This file is part of Database.
- *
- * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
- * @copyright  Copyright © 2022 Database
- * @license    http://www.gnu.org/licenses/gpl-3.0.txt  GNU GPL 3.0
- * @version    1.0.1
- * @link       https://www.muhammetsafak.com.tr
- */
 
 declare(strict_types=1);
 
@@ -365,6 +354,33 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->where('post.id', 5);
 
         $expected = 'SELECT post.title, COALESCE(stat.view, post.view) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = 5';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
+    }
+
+
+    public function testTableAliasSQLStatementBuild()
+    {
+
+        $this->db->select('p.title')
+            ->select('s.view as s_view')
+            ->from('post as p')
+            ->leftJoin('stat as s', 's.id=p.id')
+            ->where('p.id', 5);
+
+        $expected = 'SELECT p.title, s.view AS s_view FROM post AS p LEFT JOIN stat AS s ON s.id=p.id WHERE p.id = 5';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
+
+        $this->db->select('p.title')
+            ->select('s.view as s_view')
+            ->from('post p')
+            ->leftJoin('stat s', 's.id=p.id')
+            ->where('p.id', 5);
+
+        $expected = 'SELECT p.title, s.view AS s_view FROM post AS p LEFT JOIN stat AS s ON s.id=p.id WHERE p.id = 5';
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();

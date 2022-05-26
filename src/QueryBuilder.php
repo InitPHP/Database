@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.4
+ * @version    1.0.5
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -259,13 +259,24 @@ trait QueryBuilder
      */
     public function from(string $table): self
     {
-        $table = trim($table);
-        if(!isset($this->table)){
-            $this->table = $table;
+        $table = $this->fromResolve($table);
+        if(is_string($table)){
+            if(!isset($this->table)){
+                $this->table = $table;
+            }
+            if(!in_array($table, $this->QB_From, true)){
+                $this->QB_From[] = $table;
+            }
+
+            return $this;
         }
-        if(in_array($table, $this->QB_From, true) === FALSE){
-            $this->QB_From[] = $table;
+
+        foreach ($table as $tab) {
+            if(!in_array($tab, $this->QB_From, true)){
+                $this->QB_From[] = $tab;
+            }
         }
+
         return $this;
     }
 
@@ -278,7 +289,8 @@ trait QueryBuilder
         if(in_array($type, $this->_supported_join_types, true) === FALSE){
             throw new \InvalidArgumentException($type . ' Join type is not supported.');
         }
-        if(isset($this->QB_Join[$table]) || in_array($table, $this->QB_From, true) !== FALSE){
+        $table = $this->fromResolve($table);
+        if(isset($this->QB_Join[$table]) || in_array($table, $this->QB_From, true)){
             return $this;
         }
         $onStmt = str_replace(' = ', '=', $onStmt);
@@ -1051,7 +1063,6 @@ trait QueryBuilder
 
     private function whereOrHavingStatementPrepare(string $column, $value, string $mark = '='): string
     {
-        $column = $column;
         $value = $this->argumentPrepare($value);
         $mark = trim($mark);
         if($mark === '='){
@@ -1156,7 +1167,7 @@ trait QueryBuilder
         return $this->argumentPrepare($value[0]) . ' AND ' . $this->argumentPrepare($value[1]);
     }
 
-    private function aliasStatementPrepare(string $statement)
+    private function aliasStatementPrepare(string $statement): false|array
     {
         if(stripos($statement, ' as ') === FALSE){
             return false;
@@ -1177,7 +1188,7 @@ trait QueryBuilder
         if($column === ''){
             return;
         }
-        if(strpos($column, ',') !== FALSE){
+        if(str_contains($column, ',')){
             $this->prepareSelect(explode(',', $column), $alias, $fn, $pattern);
             return;
         }
@@ -1214,14 +1225,30 @@ trait QueryBuilder
         }
     }
 
-    private function tableDotColumnSplitAndCombine(string $tableDotColumn): string
+
+    private function fromResolve(string $table, ?string $alias = null): string|array
     {
-        if(strpos($tableDotColumn, '.') !== FALSE){
-            $split = explode('.', $tableDotColumn, 2);
-            $table = trim($split[0]);
-            return $table . '.' . $split[1];
+        $table = trim($table);
+        if(str_contains($table, ',')){
+            $parse = explode(',', $table);
+            $res = [];
+            foreach ($parse as $tab) {
+                $res[] = $this->fromResolve($tab);
+            }
+            return $res;
         }
-        return $tableDotColumn;
+        if($alias !== null){
+            return $table . ' AS ' . trim($alias);
+        }
+
+        if(($split = $this->aliasStatementPrepare($table)) !== FALSE){
+            return $this->fromResolve($split[0], $split[1]);
+        }
+        if(str_contains($table, ' ')){
+            $split = explode(' ', $table, 2);
+            return $this->fromResolve($split[0], $split[1]);
+        }
+        return $table;
     }
 
 }
