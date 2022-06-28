@@ -60,12 +60,6 @@ class DB extends Connection implements DBInterface
         return parent::__call($name, $arguments);
     }
 
-    public function asConnectionGlobal()
-    {
-        static::$_QB_StaticPrefix = $this->_QB_Prefix;
-        parent::asConnectionGlobal();
-    }
-
     /**
      * @inheritDoc
      */
