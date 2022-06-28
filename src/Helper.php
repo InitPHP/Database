@@ -29,8 +29,13 @@ final class Helper
         $camelCase = lcfirst($camelCase); // İlk karakterden önce _ oluşmasını önlemek için.
         $parse = preg_split('/(?=[A-Z])/', $camelCase, -1, \PREG_SPLIT_NO_EMPTY);
         $key = '';
+        $first = true;
         foreach ($parse as $value) {
-            $key .= '_' . strtolower($value);
+            if(!$first){
+                $key .= '_';
+                $first = false;
+            }
+            $key .= strtolower($value);
         }
         return lcfirst($key);
     }
