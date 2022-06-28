@@ -217,17 +217,6 @@ class Model extends DB implements ModelInterface
 
     public function __construct()
     {
-        if(!empty($this->getProperty('allowedField', null))){
-            if(!empty($this->getProperty('createdField'))){
-                $this->allowedFields[] = $this->getProperty('createdField');
-            }
-            if(!empty($this->getProperty('updatedField'))){
-                $this->allowedFields[] = $this->getProperty('updatedField');
-            }
-            if(!empty($this->getProperty('deletedField'))){
-                $this->allowedFields[] = $this->getProperty('deletedField');
-            }
-        }
         if(empty($this->getProperty('table'))){
             $modelClass = get_called_class();
             $modelClassSplit = explode('\\', $modelClass);
@@ -262,6 +251,16 @@ class Model extends DB implements ModelInterface
     /**
      * @inheritDoc
      */
+    public final function withPrimaryKey(string $columnName): self
+    {
+        $clone = clone $this;
+        $clone->primaryKey = $columnName;
+        return $clone;
+    }
+
+    /**
+     * @inheritDoc
+     */
     public final function create(array $data)
     {
         return $this->insert($data);
@@ -289,6 +288,12 @@ class Model extends DB implements ModelInterface
             throw new ModelPermissionException('"' . get_called_class() . '" is not a writable model.');
         }
         $data = $this->callbacksFunctionHandler($data, 'beforeInsert');
+        if(!empty($this->getProperty('allowedFields', null))){
+            $createdField = $this->getProperty('createdField');
+            if(!empty($createdField) && !in_array($createdField, $this->allowedFields)){
+                $this->allowedFields[] = $this->getProperty('createdField');
+            }
+        }
         if(count($data) !== count($data, COUNT_RECURSIVE)){
             $rows = $data;
             $data = [];
@@ -328,8 +333,12 @@ class Model extends DB implements ModelInterface
                 return false;
             }
         }
-        if(!empty($this->getProperty('updatedField'))) {
-            $data[$this->getProperty('updatedField')] = date('c');
+        if(!empty($this->getProperty('allowedFields', null))){
+            $updateField = $this->getProperty('updatedField');
+            if(!empty($updateField) && !in_array($updateField, $this->allowedFields)){
+                $this->allowedFields[] = $this->getProperty('updatedField');
+            }
+            $data[$updateField] = date('c');
         }
         $sql = $this->from($this->getProperty('table'))->updateStatementBuild($data);
         $this->clear();
@@ -355,6 +364,13 @@ class Model extends DB implements ModelInterface
         $res->asAssoc()->get();
         $data = $res->rows();
         $data = $this->callbacksFunctionHandler($data, 'beforeDelete');
+
+        if(!empty($this->getProperty('allowedFields', null))){
+            $deletedField = $this->getProperty('deletedField');
+            if(!empty($deletedField) && !in_array($deletedField, $this->allowedFields)){
+                $this->allowedFields[] = $this->getProperty('deletedField');
+            }
+        }
 
         if($this->getProperty('useSoftDeletes', true) !== FALSE){
             $sql = $this->updateStatementBuild([$this->getProperty('deletedField') => date('c')]);

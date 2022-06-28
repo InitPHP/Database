@@ -37,6 +37,14 @@ interface ModelInterface extends DBInterface
     public function getError(): array;
 
     /**
+     * Modelin Primary Key sütunu değiştirilmiş bir örneğini/clone döndürür.
+     *
+     * @param string $columnName
+     * @return ModelInterface
+     */
+    public function withPrimaryKey(string $columnName): ModelInterface;
+
+    /**
      * Bir ya da daha fazla satırı ekler. ModelInterface::insert() yönteminin diğer adıdır.
      *
      * @uses ModelInterface::insert()
