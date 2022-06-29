@@ -251,6 +251,10 @@ class DB extends Connection implements DBInterface
             return false;
         }
         $this->_DBExecuteLastQueryStatement = $sql;
+        if($parameters === null && !empty($this->_DBArguments)){
+            $parameters = $this->_DBArguments;
+            $this->_DBArguments = [];
+        }
         try {
             if(($query = $this->getPDO()->prepare($sql)) === FALSE){
                 if($this->_DBTransaction !== FALSE){
