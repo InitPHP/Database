@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.8
+ * @version    1.0.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -425,7 +425,7 @@ trait QueryBuilder
     /**
      * @inheritDoc
      */
-    public function having(string $column, $value, string $mark = '', string $logical = 'AND'): self
+    public function having(string $column, $value, string $mark = '=', string $logical = 'AND'): self
     {
         $logical = str_replace(['&&', '||'], ['AND', 'OR'], strtoupper($logical));
         if(in_array($logical, ['AND', 'OR'], true) === FALSE){
@@ -1128,7 +1128,11 @@ trait QueryBuilder
             case 'IS NOT':
                 return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' IS NOT ' . $value;
             default:
-                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' ' . $mark . ' ' .$value;
+                if(((bool)preg_match('/([\w\_]+)\((.+)\)$/iu', $column, $parse)) !== FALSE){
+                    return strtoupper($parse[1]) . '('.Helper::sqlDriverQuotesStructure($parse[2], $this->_Driver).')';
+                }else{
+                    return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' ' . $mark . ' ' .$value;
+                }
         }
     }
 

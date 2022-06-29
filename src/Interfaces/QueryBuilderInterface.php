@@ -309,7 +309,7 @@ interface QueryBuilderInterface
      * @param string $logical
      * @return QueryBuilderInterface
      */
-    public function having(string $column, $value, string $mark = '', string $logical = 'AND'): QueryBuilderInterface;
+    public function having(string $column, $value, string $mark = '=', string $logical = 'AND'): QueryBuilderInterface;
 
     /**
      * Injects a string into the having clause.
