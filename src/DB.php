@@ -225,6 +225,7 @@ class DB extends Connection implements DBInterface
         $clone->clear();
         if($dbOrPDOStatement instanceof \PDOStatement){
             $clone->_DBLastStatement = $dbOrPDOStatement;
+            $clone->_DB_NumRows = $dbOrPDOStatement->rowCount();
         }elseif($dbOrPDOStatement instanceof DBInterface){
             $clone->_DBLastStatement = $dbOrPDOStatement->_DBLastStatement;
         }else{

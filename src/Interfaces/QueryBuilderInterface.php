@@ -426,10 +426,10 @@ interface QueryBuilderInterface
     public function andNotBetween(string $column, array $values): QueryBuilderInterface;
 
     /**
-     * WHERE FIND_IN_SET(column, value)
+     * WHERE FIND_IN_SET(value, column)
      *
      * @param string $column
-     * @param string|string[]|int[] $value
+     * @param string|string[]|int[]|null $value
      * @param string $logical
      * @return QueryBuilderInterface
      */

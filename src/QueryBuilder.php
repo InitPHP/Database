@@ -1127,7 +1127,7 @@ trait QueryBuilder
                     }
                     $value = '"'.implode(',', $value).'"';
                 }
-                return 'FIND_IN_SET(' . $column . ', ' . ($value ?? 'NULL') . ')';
+                return 'FIND_IN_SET(' . ($value ?? 'NULL') . ', ' . $column . ')';
             case 'SOUNDEX':
                 return "SOUNDEX(" . $column . ") LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(" . $value . ")), '%')";
             case 'IS':
