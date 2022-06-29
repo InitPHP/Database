@@ -167,6 +167,14 @@ interface QueryBuilderInterface
     public function selectCoalesce(string $column, $default = '0'): QueryBuilderInterface;
 
     /**
+     * SELECT SUM($column)
+     *
+     * @param string $column
+     * @return QueryBuilderInterface
+     */
+    public function selectSum(string $column): QueryBuilderInterface;
+
+    /**
      * FROM $table
      *
      * @param string $table

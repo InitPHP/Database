@@ -146,6 +146,22 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals($expected, $this->db->selectStatementBuild());
         $this->db->clear();
+
+        $this->db->select('publisher')
+            ->selectCount('bookName as bookSize')
+            ->selectSum('bookPrice as debt')
+            ->selectSum('tax as taxDebt')
+            ->from('books')
+            ->groupBy('publisher')
+            ->having('SUM(bookSize)', 5, '>')
+            ->orderBy('bookSize', 'DESC')
+            ->offset(3)
+            ->limit(5);
+
+        $expected = 'SELECT publisher, COUNT(bookName) AS bookSize, SUM(bookPrice) AS debt, SUM(tax) AS taxDebt FROM books GROUP BY publisher HAVING SUM(bookSize) > 5 ORDER BY bookSize DESC LIMIT 3, 5';
+
+        $this->assertEquals($expected, $this->db->selectStatementBuild());
+        $this->db->clear();
     }
 
     public function testWhereInjectStatement()

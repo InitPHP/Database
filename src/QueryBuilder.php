@@ -257,6 +257,15 @@ trait QueryBuilder
     /**
      * @inheritDoc
      */
+    public function selectSum(string $column): self
+    {
+        $this->prepareSelect($column, null, 'SUM');
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function from(string $table): self
     {
         $table = $this->fromResolve($table);
