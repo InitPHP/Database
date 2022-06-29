@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0
+ * @version    1.0.8
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -45,6 +45,8 @@ class Connection implements ConnectionInterface
     protected string $_Charset = 'utf8mb4';
 
     protected string $_Collation = 'utf8mb4_general_ci';
+
+    protected string $_Driver = 'mysql';
 
     protected ?PDO $_PDO = null;
 
@@ -84,6 +86,7 @@ class Connection implements ConnectionInterface
             } catch (\PDOException $e) {
                 throw new ConnectionException('Connection failed : ' . $e->getMessage());
             }
+            $this->_Driver = $this->_PDO->getAttribute(PDO::ATTR_DRIVER_NAME);
         }
         return $this;
     }
@@ -136,6 +139,12 @@ class Connection implements ConnectionInterface
     public function setDSN(string $DSN): self
     {
         $this->_DSN = $DSN;
+        return $this;
+    }
+
+    public function setDriver(string $driver = 'mysql'): self
+    {
+        $this->_Driver = $driver;
         return $this;
     }
 

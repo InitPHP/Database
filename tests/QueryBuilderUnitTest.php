@@ -13,7 +13,10 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
     protected function setUp(): void
     {
-        $this->db = new DB([]);
+        $this->db = new DB([
+            //Bu sadece test içindir. Normalde driver PDO tarafından sağlanır ve bu bilgi doğru apostrof için kullanılır.
+            'driver'    => '_',
+        ]);
         parent::setUp();
     }
 

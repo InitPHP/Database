@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.5
+ * @version    1.0.8
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -303,15 +303,15 @@ trait QueryBuilder
                 $this->QB_From[] = $this->table;
             }
             $this->QB_From[] = $table;
-            $this->QB_Where[0]['AND'][] = trim($stmt[1]) . '.' . $stmt[2]
+            $this->QB_Where[0]['AND'][] = Helper::sqlDriverQuotesStructure(($stmt[1] . '.' . $stmt[2]), $this->_Driver)
                 . '='
-                . trim($stmt[3]) . '.' . $stmt[4];
+                . Helper::sqlDriverQuotesStructure(($stmt[3] . '.' . $stmt[4]), $this->_Driver);
         }else{
             $this->QB_Join[$table] = $type . ' JOIN ' . $table
                 . ' ON '
-                . trim($stmt[1]) . '.' . $stmt[2]
+                . Helper::sqlDriverQuotesStructure(($stmt[1] . '.' . $stmt[2]), $this->_Driver)
                 . '='
-                . trim($stmt[3]) . '.' . $stmt[4];
+                . Helper::sqlDriverQuotesStructure(($stmt[3] . '.' . $stmt[4]), $this->_Driver);
         }
         return $this;
     }
@@ -462,7 +462,7 @@ trait QueryBuilder
         if(in_array($soft, ['ASC', 'DESC'], true) === FALSE){
             throw new \InvalidArgumentException('It can only sort as ASC or DESC.');
         }
-        $orderBy = $column . ' ' . $soft;
+        $orderBy = Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' ' . $soft;
         if(in_array($orderBy, $this->QB_OrderBy, true) === FALSE){
             $this->QB_OrderBy[] = $orderBy;
         }
@@ -474,9 +474,9 @@ trait QueryBuilder
      */
     public function groupBy(string $column): self
     {
-        $group = $column;
-        if(in_array($group, $this->QB_GroupBy, true) === FALSE){
-            $this->QB_GroupBy[] = $group;
+        $column = Helper::sqlDriverQuotesStructure($column, $this->_Driver);
+        if(in_array($column, $this->QB_GroupBy, true) === FALSE){
+            $this->QB_GroupBy[] = $column;
         }
         return $this;
     }
@@ -931,7 +931,7 @@ trait QueryBuilder
                 if($this->allowedFields !== null && in_array($column, $this->allowedFields, true) === FALSE){
                     continue;
                 }
-                $columns[] = $column;
+                $columns[] = Helper::sqlDriverQuotesStructure($column, $this->_Driver);
                 $values[] = $this->argumentPrepare($value);
             }
             $sql .= ' (' . implode(', ', $columns) . ') VALUES (' . implode(', ', $values) . ');';
@@ -944,7 +944,7 @@ trait QueryBuilder
                         continue;
                     }
                     if(in_array($column, $columns, true) === FALSE){
-                        $columns[] = $column;
+                        $columns[] = Helper::sqlDriverQuotesStructure($column, $this->_Driver);
                     }
                     $value[$column] = $this->argumentPrepare($val);
                 }
@@ -982,7 +982,7 @@ trait QueryBuilder
             if($this->allowedFields !== null && in_array($column, $this->allowedFields, true) === FALSE){
                 continue;
             }
-            $sets[] = $column . ' = '. $this->argumentPrepare($value);
+            $sets[] = Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' = '. $this->argumentPrepare($value);
         }
         if(empty($sets)){
             return '';
@@ -1050,7 +1050,6 @@ trait QueryBuilder
         return $stmt;
     }
 
-
     private function sqlLimitStatementBuild(): string
     {
         if($this->QB_Limit !== null){
@@ -1066,47 +1065,47 @@ trait QueryBuilder
         $value = $this->argumentPrepare($value);
         $mark = trim($mark);
         if($mark === '='){
-            return $column . ' = ' . $value;
+            return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' = ' . $value;
         }
         switch (strtoupper($mark)) {
             case '!=':
-                return $column . ' != ' . $value;
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' != ' . $value;
             case '<':
-                return $column . ' < ' . $value;
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' < ' . $value;
             case '<=':
-                return $column . ' <= ' . $value;
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' <= ' . $value;
             case '>':
-                return $column . ' > ' . $value;
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' > ' . $value;
             case '>=':
-                return $column . ' >= ' . $value;
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' >= ' . $value;
             case 'LIKE' :
-                return $column . ' LIKE "%' . trim($value, '\\"') . '%"';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' LIKE "%' . trim($value, '\\"') . '%"';
             case 'START_LIKE':
-                return $column . ' LIKE "%' . trim($value, '\\"') . '"';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' LIKE "%' . trim($value, '\\"') . '"';
             case 'END_LIKE':
-                return $column . ' LIKE "' . trim($value, '\\"') . '%"';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' LIKE "' . trim($value, '\\"') . '%"';
             case 'NOT_LIKE':
             case 'NOTLIKE':
             case 'NOT LIKE':
-                return $column . ' NOT LIKE "%' . trim($value, '\\"') . '%"';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' NOT LIKE "%' . trim($value, '\\"') . '%"';
             case 'START_NOT_LIKE':
-                return $column . ' NOT LIKE "%' . trim($value, '\\"') . '"';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' NOT LIKE "%' . trim($value, '\\"') . '"';
             case 'END_NOT_LIKE':
-                return $column . ' NOT LIKE "' . trim($value, '\\"') . '%"';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' NOT LIKE "' . trim($value, '\\"') . '%"';
             case 'REGEXP':
-                return $column . ' REGEXP "' . trim($value, '\\"') . '"';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' REGEXP "' . trim($value, '\\"') . '"';
             case 'BETWEEN':
-                return $column . ' BETWEEN ' . $this->betweenArgumentPrepare($value);
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' BETWEEN ' . $this->betweenArgumentPrepare($value);
             case 'NOT_BETWEEN':
             case 'NOTBETWEEN':
             case 'NOT BETWEEN':
-                return $column . ' NOT BETWEEN ' . $this->betweenArgumentPrepare($value);
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' NOT BETWEEN ' . $this->betweenArgumentPrepare($value);
             case 'IN':
-                return $column . ' IN (' . (is_array($value) ? implode(', ', $value) : $value) . ')';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' IN (' . (is_array($value) ? implode(', ', $value) : $value) . ')';
             case 'NOT_IN':
             case 'NOTIN':
             case 'NOT IN':
-                return $column . ' NOT IN (' . (is_array($value) ? implode(', ', $value) : $value) . ')';
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' NOT IN (' . (is_array($value) ? implode(', ', $value) : $value) . ')';
             case 'FIND IN SET':
             case 'FINDINSET':
             case 'FIND_IN_SET':
@@ -1123,13 +1122,13 @@ trait QueryBuilder
             case 'SOUNDEX':
                 return "SOUNDEX(" . $column . ") LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(" . $value . ")), '%')";
             case 'IS':
-                return $column . ' IS ' . $value;
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' IS ' . $value;
             case 'IS_NOT':
             case 'ISNOT':
             case 'IS NOT':
-                return $column . ' IS NOT ' . $value;
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' IS NOT ' . $value;
             default:
-                return $column . ' ' . $mark . ' ' .$value;
+                return Helper::sqlDriverQuotesStructure($column, $this->_Driver) . ' ' . $mark . ' ' .$value;
         }
     }
 
@@ -1153,10 +1152,10 @@ trait QueryBuilder
             }
             return $value;
         }
-        if(((bool)preg_match('/^:[\w]+$/', $value)) !== FALSE){
+        if(((bool)preg_match('/^:[\w]+$/', (string)$value)) !== FALSE){
             return $value;
         }
-        if(((bool)preg_match('/^[A-Za-z]+\(\)$/', $value)) !== FALSE){
+        if(((bool)preg_match('/^[A-Za-z]+\(\)$/', (string)$value)) !== FALSE){
             return $value;
         }
         return '"' . $this->escapeString($value, Connection::ESCAPE_STR) . '"';
@@ -1210,15 +1209,17 @@ trait QueryBuilder
                     '{column}',
                     '{function}',
                 ], [
-                    $select,
+                    Helper::sqlDriverQuotesStructure($select, $this->_Driver),
                     strtoupper($fn),
                 ], $pattern);
             }else{
-                $select = strtoupper($fn) . '(' .$select . ')';
+                $select = strtoupper($fn) . '(' .Helper::sqlDriverQuotesStructure($select, $this->_Driver) . ')';
             }
+        }else{
+            $select = Helper::sqlDriverQuotesStructure($select, $this->_Driver);
         }
         if(!empty($alias)){
-            $select .= ' AS ' . $alias;
+            $select .= ' AS ' . Helper::sqlDriverQuotesStructure($alias, $this->_Driver);
         }
         if(in_array($select, $this->QB_Select, true) === FALSE){
             $this->QB_Select[] = $select;
@@ -1238,7 +1239,7 @@ trait QueryBuilder
             return $res;
         }
         if($alias !== null){
-            return $table . ' AS ' . trim($alias);
+            return Helper::sqlDriverQuotesStructure($table, $this->_Driver) . ' AS ' . Helper::sqlDriverQuotesStructure($alias, $this->_Driver);
         }
 
         if(($split = $this->aliasStatementPrepare($table)) !== FALSE){
@@ -1248,7 +1249,7 @@ trait QueryBuilder
             $split = explode(' ', $table, 2);
             return $this->fromResolve($split[0], $split[1]);
         }
-        return $table;
+        return Helper::sqlDriverQuotesStructure($table, $this->_Driver);
     }
 
 }
