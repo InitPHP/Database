@@ -254,6 +254,15 @@ interface QueryBuilderInterface
     public function rightOuterJoin(string $table, string $onStmt): QueryBuilderInterface;
 
     /**
+     * NATURAL JOIN $table
+     *
+     * @param string $table <p>The name of the table to join.</p>
+     * @return QueryBuilderInterface
+     * @throws \InvalidArgumentException <p>$onStmt is not in the correct format.</p>
+     */
+    public function naturalJoin(string $table): QueryBuilderInterface;
+
+    /**
      * It is used to group where clauses.
      *
      * @param \Closure $group <p>QueryBuilderInterface is passed as a parameter to this callback function.</p>

@@ -43,7 +43,7 @@ trait QueryBuilder
     protected string $_QB_Prefix = '';
 
     private array $_supported_join_types = [
-        'INNER', 'LEFT', 'RIGHT', 'LEFT OUTER', 'RIGHT OUTER', 'SELF'
+        'INNER', 'LEFT', 'RIGHT', 'LEFT OUTER', 'RIGHT OUTER', 'SELF', 'NATURAL'
     ];
 
     protected array $QB_Select = [];
@@ -301,6 +301,12 @@ trait QueryBuilder
         if(isset($this->QB_Join[$table]) || in_array($table, $this->QB_From, true)){
             return $this;
         }
+
+        if($type === 'NATURAL'){
+            $this->QB_Join[$table] = 'NATURAL JOIN ' . $table;
+            return $this;
+        }
+
         $onStmt = str_replace(' = ', '=', $onStmt);
         if((bool)preg_match('/([\w\_\-]+)\.([\w\_\-]+)=([\w\_\-]+)\.([\w\_\-]+)/u', $onStmt, $stmt) === FALSE){
             throw new \InvalidArgumentException('Join syntax is not in the correct format. Example : "post.author=user.id"');
@@ -370,6 +376,14 @@ trait QueryBuilder
     public function rightOuterJoin(string $table, string $onStmt): self
     {
         return $this->join($table, $onStmt, 'RIGHT OUTER');
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function naturalJoin(string $table): self
+    {
+        return $this->join($table, '', 'NATURAL');
     }
 
     /**
