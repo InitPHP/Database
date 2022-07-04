@@ -46,8 +46,8 @@ final class Helper
 
     public static function strEndsWith(string $haystack, string $needle): bool
     {
-        if(function_exists('str_starts_with')){
-            return (bool) \str_starts_with($haystack, $needle);
+        if(function_exists('str_ends_with')){
+            return (bool) \str_ends_with($haystack, $needle);
         }
         return substr($haystack, (0 - strlen($needle))) === $needle;
     }
