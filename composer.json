@@ -24,7 +24,7 @@
     ],
     "minimum-stability": "stable",
     "require": {
-        "php": ">=8.0",
+        "php": ">=7.4",
         "ext-pdo": "*",
         "initphp/validation": "^1.0",
         "ext-ctype": "*"

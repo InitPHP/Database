@@ -35,7 +35,6 @@ use function is_int;
 use function is_numeric;
 use function is_bool;
 use function is_iterable;
-use function strpos;
 use function stripos;
 
 trait QueryBuilder
@@ -1217,7 +1216,11 @@ trait QueryBuilder
         return $this->argumentPrepare($value[0]) . ' AND ' . $this->argumentPrepare($value[1]);
     }
 
-    private function aliasStatementPrepare(string $statement): false|array
+    /**
+     * @param string $statement
+     * @return false|string[]
+     */
+    private function aliasStatementPrepare(string $statement)
     {
         if(stripos($statement, ' as ') === FALSE){
             return false;
@@ -1238,7 +1241,7 @@ trait QueryBuilder
         if($column === ''){
             return;
         }
-        if(str_contains($column, ',')){
+        if(Helper::strContains($column, ',')){
             $this->prepareSelect(explode(',', $column), $alias, $fn, $pattern);
             return;
         }
@@ -1277,11 +1280,15 @@ trait QueryBuilder
         }
     }
 
-
-    private function fromResolve(string $table, ?string $alias = null): string|array
+    /**
+     * @param string $table
+     * @param string|null $alias
+     * @return string|array
+     */
+    private function fromResolve(string $table, ?string $alias = null)
     {
         $table = trim($table);
-        if(str_contains($table, ',')){
+        if(Helper::strContains($table, ',')){
             $parse = explode(',', $table);
             $res = [];
             foreach ($parse as $tab) {
@@ -1296,7 +1303,7 @@ trait QueryBuilder
         if(($split = $this->aliasStatementPrepare($table)) !== FALSE){
             return $this->fromResolve($split[0], $split[1]);
         }
-        if(str_contains($table, ' ')){
+        if(Helper::strContains($table, ' ')){
             $split = explode(' ', $table, 2);
             return $this->fromResolve($split[0], $split[1]);
         }

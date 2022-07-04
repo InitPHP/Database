@@ -8,7 +8,7 @@ PHP has powerful database abstraction libraries like Doctrine and Laravel Eloque
 
 ## Requirements
 
-- PHP 8.0 and above.
+- PHP 7.4 and above.
 - PHP PDO extension.
 - [InitPHP Validation](https://github.com/InitPHP/Validation) (Only if you want to use validation operations in Model class.)
 

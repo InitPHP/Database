@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0
+ * @version    1.0.10
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -18,7 +18,6 @@ namespace InitPHP\Database;
 use InitPHP\Database\Interfaces\EntityInterface;
 
 use function substr;
-use function str_ends_with;
 use function method_exists;
 
 class Entity implements EntityInterface
@@ -35,7 +34,7 @@ class Entity implements EntityInterface
 
     public function __call($name, $arguments)
     {
-        if(str_ends_with($name, 'Attribute') === FALSE){
+        if(Helper::strEndsWith($name, 'Attribute') === FALSE){
             throw new \RuntimeException('There is no ' . $name . ' method.');
         }
         $startWith = substr($name, 0, 3);

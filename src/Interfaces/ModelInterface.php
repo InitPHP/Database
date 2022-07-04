@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.2
+ * @version    1.0.10
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -207,5 +207,19 @@ interface ModelInterface extends DBInterface
      * @return bool
      */
     public function isDeletable(): bool;
+
+    /**
+     * Modelin kullandığı tablo adını verir.
+     *
+     * @return string|null
+     */
+    public function getTableName(): ?string;
+
+    /**
+     * Varsa modelin PRIMARY KEY sütununun/kolon adını verir.
+     *
+     * @return string|null
+     */
+    public function getPrimaryKeyColumnName(): ?string;
 
 }

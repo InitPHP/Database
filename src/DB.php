@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0
+ * @version    1.0.10
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -22,7 +22,6 @@ use function is_string;
 use function is_object;
 use function trim;
 use function substr;
-use function str_starts_with;
 
 class DB extends Connection implements DBInterface
 {
@@ -51,7 +50,7 @@ class DB extends Connection implements DBInterface
 
     public function __call($name, $arguments)
     {
-        if(str_starts_with($name, 'findBy')){
+        if(Helper::strStartsWith($name, 'findBy')){
             $attrCamelCase = substr($name, 6);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
             $this->where($attributeName, ...$arguments);

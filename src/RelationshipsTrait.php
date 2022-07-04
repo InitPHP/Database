@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0
+ * @version    1.0.10
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -17,6 +17,7 @@ namespace InitPHP\Database;
 
 use \InitPHP\Database\Exception\RelationshipsException;
 
+use InitPHP\Database\Interfaces\ModelInterface;
 use function strtolower;
 
 trait RelationshipsTrait
@@ -56,18 +57,25 @@ trait RelationshipsTrait
     {
         try {
             $model = new \ReflectionClass($modelClass);
-            $tableProperty = $model->getProperty('table');
-            $primaryProperty = $model->getProperty('primaryKey');
-
-            if(($table = $tableProperty->getDefaultValue()) === null){
-                $table = strtolower($model->getShortName());
+            if(\PHP_VERSION_ID >= 80000){
+                $tableProperty = $model->getProperty('table');
+                $primaryProperty = $model->getProperty('primaryKey');
+                if(($table = $tableProperty->getDefaultValue()) === null){
+                    $table = strtolower($model->getShortName());
+                }
+                $primaryColumn = $primaryProperty->getDefaultValue();
+            }else{
+                /** @var ModelInterface $modelInstance */
+                $modelInstance = $model->newInstance();
+                $table = $modelInstance->getTableName();
+                $primaryColumn = $modelInstance->getPrimaryKeyColumnName();
             }
         }catch (\Exception $e) {
             throw new RelationshipsException($e->getMessage());
         }
         return [
             'table'             => $table,
-            'primaryColumn'     => $primaryProperty->getDefaultValue(),
+            'primaryColumn'     => $primaryColumn,
         ];
     }
 

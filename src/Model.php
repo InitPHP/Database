@@ -540,6 +540,22 @@ class Model extends DB implements ModelInterface
         return $this->getProperty('deletable', true);
     }
 
+    /**
+     * @inheritDoc
+     */
+    public final function getTableName(): ?string
+    {
+        return $this->getProperty('table', null);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public final function getPrimaryKeyColumnName(): ?string
+    {
+        return $this->getProperty('primaryKey', null);
+    }
+
     protected final function setError(string $column, string $msg, array $context = []): void
     {
         $column = trim($column);
