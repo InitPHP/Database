@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.9
+ * @version    1.0.10
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -592,6 +592,30 @@ trait QueryBuilder
     /**
      * @inheritDoc
      */
+    public function notFindInSet(string $column, $value, string $logical = 'AND'): self
+    {
+        return $this->where($column, $value, 'NOT FIND_IN_SET', $logical);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function andNotFindInSet(string $column, $value): self
+    {
+        return $this->where($column, $value, 'NOT FIND_IN_SET', 'AND');
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function orNotFindInSet(string $column, $value): self
+    {
+        return $this->where($column, $value, 'NOT FIND_IN_SET', 'OR');
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function in(string $column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'IN', $logical);
@@ -1128,6 +1152,20 @@ trait QueryBuilder
                     $value = '"'.implode(',', $value).'"';
                 }
                 return 'FIND_IN_SET(' . ($value ?? 'NULL') . ', ' . $column . ')';
+            case 'NOT FIND IN SET':
+            case 'NOTFINDINSET':
+            case 'NOT FIND_IN_SET':
+            case 'NOT_FIND_IN_SET':
+                if(is_array($value)){
+                    foreach ($value as &$val) {
+                        if(is_int($val)){
+                            continue;
+                        }
+                        $val = trim($val, "\"\\ \t\n\r\0\x0B");
+                    }
+                    $value = '"'.implode(',', $value).'"';
+                }
+                return 'NOT FIND_IN_SET(' . ($value ?? 'NULL') . ', ' . $column . ')';
             case 'SOUNDEX':
                 return "SOUNDEX(" . $column . ") LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(" . $value . ")), '%')";
             case 'IS':

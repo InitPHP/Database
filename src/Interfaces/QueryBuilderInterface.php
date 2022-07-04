@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.1
+ * @version    1.0.10
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -429,29 +429,57 @@ interface QueryBuilderInterface
      * WHERE FIND_IN_SET(value, column)
      *
      * @param string $column
-     * @param string|string[]|int[]|null $value
+     * @param string|int|string[]|int[]|null $value
      * @param string $logical
      * @return QueryBuilderInterface
      */
     public function findInSet(string $column, $value, string $logical = 'AND'): QueryBuilderInterface;
 
     /**
-     * WHERE FIND_IN_SET(column, value)
+     * WHERE FIND_IN_SET(value, column)
      *
      * @param string $column
-     * @param string|string[]|int[] $value
+     * @param string|int|string[]|int[]|null $value
      * @return QueryBuilderInterface
      */
     public function orFindInSet(string $column, $value): QueryBuilderInterface;
 
     /**
-     * WHERE FIND_IN_SET(column, value)
+     * WHERE FIND_IN_SET(value, column)
      *
      * @param string $column
-     * @param $value
+     * @param string|int|string[]|int[]|null $value
      * @return QueryBuilderInterface
      */
     public function andFindInSet(string $column, $value): QueryBuilderInterface;
+
+    /**
+     * WHERE NOT FIND_IN_SET(value, column)
+     *
+     * @param string $column
+     * @param string|int|string[]|int[]|null $value
+     * @param string $logical
+     * @return QueryBuilderInterface
+     */
+    public function notFindInSet(string $column, $value, string $logical = 'AND'): QueryBuilderInterface;
+
+    /**
+     * WHERE NOT FIND_IN_SET(value, column)
+     *
+     * @param string $column
+     * @param string|int|string[]|int[]|null $value
+     * @return QueryBuilderInterface
+     */
+    public function andNotFindInSet(string $column, $value): QueryBuilderInterface;
+
+    /**
+     * WHERE NOT FIND_IN_SET(value, column)
+     *
+     * @param string $column
+     * @param string|int|string[]|int[]|null $value
+     * @return QueryBuilderInterface
+     */
+    public function orNotFindInSet(string $column, $value): QueryBuilderInterface;
 
     /**
      * WHERE column IN (values[0], values[1], ...)
