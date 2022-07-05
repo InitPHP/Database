@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.10
+ * @version    1.0.11
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -61,6 +61,7 @@ final class Helper
         foreach ($parse as $value) {
             if(!$first){
                 $key .= '_';
+            }else{
                 $first = false;
             }
             $key .= strtolower($value);
