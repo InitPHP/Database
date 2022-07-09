@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.10
+ * @version    1.0.12
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -37,7 +37,7 @@ class DB extends Connection implements DBInterface
 
     protected ?int $_DBAsReturnType;
     protected \PDOStatement $_DBLastStatement;
-    private array $_DBArguments = [];
+    protected array $_DBArguments = [];
 
     private bool $_DBTransactionStatus = false;
     private bool $_DBTransactionTestMode = false;

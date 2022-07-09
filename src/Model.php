@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.2
+ * @version    1.0.12
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -617,9 +617,12 @@ class Model extends DB implements ModelInterface
         foreach (self::VALIDATION_MSG_KEYS as $msgKey) {
             $localeArray[$msgKey] = $this->validationMsg[$column][$msgKey] ?? $this->validationMsg[$msgKey];
         }
+
+        $real_value = (is_string($value) && Helper::strStartsWith($value, ':')) ? ($this->_DBArguments[$value] ?? $value) : $value;
+
         $validation = self::$_DBValidation
             ->setLocaleArray($localeArray)
-            ->setData([$column => $value]);
+            ->setData([$column => $real_value]);
         if(in_array('is_unique', $methods)){
             $key = array_search('is_unique', $methods);
             unset($methods[$key]);
@@ -627,6 +630,9 @@ class Model extends DB implements ModelInterface
             $res->clear()
                 ->select($column)
                 ->where($column, $value, '=');
+            if (is_string($value) && Helper::strStartsWith($value, ':')) {
+                $res->setParameter($value, $real_value);
+            }
             if(is_array($uniqueWhere) && !empty($uniqueWhere)){
                 foreach ($uniqueWhere as $uKey => $uVal) {
                     $res->where($uKey, $uVal, '!=');
