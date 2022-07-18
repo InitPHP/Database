@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 InitPHP
  * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.12
+ * @version    1.0.13
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -166,7 +166,8 @@ class DB extends Connection implements DBInterface
      */
     public function row()
     {
-        return $this->dbGetFetchMode('fetch');
+        $fetch = $this->dbGetFetchMode('fetchAll');
+        return \is_array($fetch) && !empty($fetch) ? $fetch[0] : null;
     }
 
     /**
