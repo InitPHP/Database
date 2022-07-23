@@ -2,12 +2,12 @@
 /**
  * Entity.php
  *
- * This file is part of InitPHP.
+ * This file is part of Database.
  *
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
- * @copyright  Copyright © 2022 InitPHP
- * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.13
+ * @copyright  Copyright © 2022 Muhammet ŞAFAK
+ * @license    ./LICENSE  MIT
+ * @version    1.1
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -15,17 +15,12 @@ declare(strict_types=1);
 
 namespace InitPHP\Database;
 
-use InitPHP\Database\Interfaces\EntityInterface;
-
-use function substr;
-use function method_exists;
-
-class Entity implements EntityInterface
+class Entity
 {
 
-    protected array $DBAttributes = [];
+    protected array $_Attributes = [];
 
-    protected array $DBOriginalAttributes = [];
+    protected array $_OriginalAttributes = [];
 
     public function __construct(?array $data = null)
     {
@@ -34,19 +29,19 @@ class Entity implements EntityInterface
 
     public function __call($name, $arguments)
     {
-        if(Helper::strEndsWith($name, 'Attribute') === FALSE){
+        if(Helper::str_ends_with($name, 'Attribute') === FALSE){
             throw new \RuntimeException('There is no ' . $name . ' method.');
         }
-        $startWith = substr($name, 0, 3);
+        $startWith = \substr($name, 0, 3);
         if($startWith === 'get'){
-            $attrCamelCase = substr($name, 3, -9);
+            $attrCamelCase = \substr($name, 3, -9);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
-            return $this->DBAttributes[$attributeName] ?? null;
+            return $this->_Attributes[$attributeName] ?? null;
         }
         if($startWith === 'set'){
-            $attrCamelCase = substr($name, 3, -9);
+            $attrCamelCase = \substr($name, 3, -9);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
-            $this->DBAttributes[$attributeName] = ($arguments[0] ?? '');
+            $this->_Attributes[$attributeName] = ($arguments[0] ?? '');
             return $this;
         }
         throw new \RuntimeException('There is no ' . $name . ' method.');
@@ -56,43 +51,43 @@ class Entity implements EntityInterface
     {
         $attrName = Helper::attributeNameCamelCaseEncode($key);
         $method = 'set' . $attrName . 'Attribute';
-        if(method_exists($this, $method)){
+        if(\method_exists($this, $method)){
             $this->{$method}($value);
             return $value;
         }
-        return $this->DBAttributes[$key] = $value;
+        return $this->_Attributes[$key] = $value;
     }
 
     public function __get($key)
     {
         $attrName = Helper::attributeNameCamelCaseEncode($key);
         $method = 'get' . $attrName . 'Attribute';
-        if(method_exists($this, $method)){
+        if(\method_exists($this, $method)){
             return $this->{$method}();
         }
-        return $this->DBAttributes[$key] ?? null;
+        return $this->_Attributes[$key] ?? null;
     }
 
     public function __isset($key)
     {
-        return isset($this->DBAttributes[$key]);
+        return isset($this->_Attributes[$key]);
     }
 
     public function __unset($key)
     {
-        if(isset($this->DBAttributes[$key])){
-            unset($this->DBAttributes[$key]);
+        if(isset($this->_Attributes[$key])){
+            unset($this->_Attributes[$key]);
         }
     }
 
     public function __debugInfo()
     {
-        return $this->DBAttributes;
+        return $this->_Attributes;
     }
 
     public final function getAttributes(): array
     {
-        return $this->DBAttributes;
+        return $this->_Attributes;
     }
 
     protected function setUp(?array $data = null): void
@@ -113,7 +108,7 @@ class Entity implements EntityInterface
 
     protected function syncOriginal(): self
     {
-        $this->DBOriginalAttributes = $this->DBAttributes;
+        $this->_OriginalAttributes = $this->_Attributes;
         return $this;
     }
 

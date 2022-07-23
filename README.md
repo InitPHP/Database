@@ -8,7 +8,7 @@ PHP has powerful database abstraction libraries like Doctrine and Laravel Eloque
 
 ## Requirements
 
-- PHP 7.4 and above.
+- PHP 7.4 and later.
 - PHP PDO extension.
 - [InitPHP Validation](https://github.com/InitPHP/Validation) (Only if you want to use validation operations in Model class.)
 
@@ -41,7 +41,7 @@ $db = (new DB([
 ]))->connection();
 
 // If you are working with a single database, do not forget to make your connection global.
-$db->asConnectionGlobal();
+$db->connectionAsGlobal();
 ```
 
 #### Create
@@ -55,8 +55,8 @@ $data = [
 ];
 
 /** @var $db \InitPHP\Database\DB */
-$isInsert = $db->from('post')
-                ->insert($data);
+$isInsert = $db->table('post')
+                ->create($data);
 
 /**
 * This executes the following query.
@@ -87,8 +87,8 @@ $data = [
 ];
 
 /** @var $db \InitPHP\Database\DB */
-$isInsert = $db->from('post')
-                ->insert($data);
+$isInsert = $db->table('post')
+                ->create($data);
 
 /**
 * This executes the following query.
@@ -205,7 +205,6 @@ class Posts extends Model
         'password'      => '', // The password of the database user.
         'charset'       => 'utf8mb4', // The character set to use in the database.
         'collation'     => 'utf8mb4_general_ci', // Collection set to use in database
-        'prefix'        => '' // Prefix to be used in table names
     ];
 
     /**

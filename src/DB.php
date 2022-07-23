@@ -2,12 +2,12 @@
 /**
  * DB.php
  *
- * This file is part of InitPHP.
+ * This file is part of Database.
  *
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
- * @copyright  Copyright © 2022 InitPHP
- * @license    http://initphp.github.io/license.txt  MIT
- * @version    1.0.13
+ * @copyright  Copyright © 2022 Muhammet ŞAFAK
+ * @license    ./LICENSE  MIT
+ * @version    1.1
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -15,375 +15,383 @@ declare(strict_types=1);
 
 namespace InitPHP\Database;
 
-use \InitPHP\Database\Exception\QueryExecuteException;
-use \InitPHP\Database\Interfaces\{DBInterface, EntityInterface};
+use \PDO;
+use \InitPHP\Database\Connection\{Connection, ConnectionInterface};
+use \InitPHP\Database\DataMapper\{DataMapper, DataMapperInterface};
+use InitPHP\Database\Exceptions\DatabaseException;
+use \InitPHP\Database\QueryBuilder\{QueryBuilder, QueryBuilderInterface};
 
-use function is_string;
-use function is_object;
-use function trim;
-use function substr;
-
-class DB extends Connection implements DBInterface
+/**
+ * @mixin QueryBuilderInterface
+ * @mixin DataMapperInterface
+ * @mixin ConnectionInterface
+ */
+class DB
 {
 
-    use QueryBuilder;
+    public const FETCH_ASSOC = PDO::FETCH_ASSOC;
+    public const FETCH_BOTH = PDO::FETCH_BOTH;
+    public const FETCH_LAZY = PDO::FETCH_LAZY;
+    public const FETCH_OBJ = PDO::FETCH_OBJ;
+    public const FETCH_ENTITY = PDO::FETCH_CLASS;
 
-    protected ?string $_DBExecuteLastQueryStatement;
+    /** @var ConnectionInterface */
+    private $_connection;
 
-    protected ?int $_DB_NumRows = null, $_DB_LastInsertId = null;
+    /** @var QueryBuilderInterface */
+    private $_queryBuilder;
 
-    /** @var string|EntityInterface */
-    protected $entity;
+    /** @var DataMapperInterface */
+    private $_dataMapper;
 
-    protected ?int $_DBAsReturnType;
-    protected \PDOStatement $_DBLastStatement;
-    protected array $_DBArguments = [];
+    /** @var array */
+    private array $configurations = [
+        'dsn'           => null,
+        'username'      => null,
+        'password'      => null,
+        'tableSchema'   => null,
+        'tableSchemaID' => null,
+        'entity'        => Entity::class,
+    ];
 
-    private bool $_DBTransactionStatus = false;
-    private bool $_DBTransactionTestMode = false;
-    private bool $_DBTransaction = false;
+    /** @var array */
+    private array $_parameters = [];
 
-    public function __construct(array $configs = [])
+    private bool $is_get_execute = false;
+
+    public function __construct(array $configurations)
     {
-        parent::__construct($configs);
+        $this->configurations = \array_merge($this->configurations, $configurations);
+
+        $this->_connection = new Connection([
+            'dsn'       => ($this->configurations['dsn'] ?? ''),
+            'username'  => ($this->configurations['username'] ?? ''),
+            'password'  => ($this->configurations['password'] ?? ''),
+        ]);
+        $dataMapperOptions = [];
+        if(isset($this->configurations['entity'])){
+            $dataMapperOptions['entity'] = $this->configurations['entity'];
+        }
+        if(isset($this->configurations['fetch'])){
+            $dataMapperOptions['fetch'] = $this->configurations['fetch'];
+        }
+        $this->_dataMapper = new DataMapper($this->_connection, $dataMapperOptions);
+        $this->_queryBuilder = new QueryBuilder(($this->configurations['allowedFields'] ?? null));
     }
 
     public function __call($name, $arguments)
     {
-        if(Helper::strStartsWith($name, 'findBy')){
-            $attrCamelCase = substr($name, 6);
+        if(Helper::str_starts_with($name, 'findBy')){
+            $attrCamelCase = \substr($name, 6);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
-            $this->where($attributeName, ...$arguments);
-            return $this;
+            $fields = [$attributeName => $arguments[0]];
+            $query = $this->getQueryBuilder()->buildQuery([
+                'table'         => $this->getSchema(),
+                'type'          => 'select',
+                'conditions'    => $fields,
+            ], false)->readQuery();
+            $this->getQueryBuilder()->reset();
+            $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($fields));
+            return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
         }
-        return parent::__call($name, $arguments);
+        if(\method_exists($this->_queryBuilder, $name)){
+            $res = $this->getQueryBuilder()->{$name}(...$arguments);
+            if($res instanceof QueryBuilderInterface){
+                return $this;
+            }
+            return $res;
+        }
+        if(\method_exists($this->_dataMapper, $name)){
+            $res = $this->getDataMapper()->{$name}(...$arguments);
+            if($res instanceof DataMapperInterface){
+                return $this;
+            }
+            return $res;
+        }
+        if(\method_exists($this->_connection, $name)){
+            return $this->getConnection()->{$name}(...$arguments);
+        }
+        throw new DatabaseException('The "' . $name . '" method does not exist.');
     }
 
     /**
-     * @inheritDoc
+     * @param string $table
+     * @param string|null $tableSchemeID
+     * @return $this
      */
-    public function numRows($dbOrPDOStatement = null): int
+    public function table(string $table, ?string $tableSchemeID = null): self
     {
-        if($dbOrPDOStatement === null){
-            return $this->_DB_NumRows ?? 0;
-        }
-        if($dbOrPDOStatement instanceof \PDOStatement){
-            return $dbOrPDOStatement->rowCount();
-        }
-        if($dbOrPDOStatement instanceof DBInterface){
-            return $dbOrPDOStatement->numRows(null);
-        }
-        return 0;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function lastSQL(): ?string
-    {
-        return $this->_DBExecuteLastQueryStatement ?? null;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function insertId(): ?int
-    {
-        return $this->_DB_LastInsertId ?? null;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function asAssoc(): self
-    {
-        $this->_DBAsReturnType = \PDO::FETCH_ASSOC;
+        $this->configurations['tableSchema'] = $table;
+        $this->configurations['tableSchemaID'] = $tableSchemeID;
+        $this->getQueryBuilder()->table($table, $tableSchemeID);
         return $this;
     }
 
     /**
-     * @inheritDoc
+     * @return string|null
      */
-    public function asArray(): self
+    public function getSchema()
     {
-        $this->_DBAsReturnType = \PDO::FETCH_BOTH;
-        return $this;
+        return $this->configurations['tableSchema'];
     }
 
     /**
-     * @inheritDoc
+     * @return string|null
      */
-    public function asObject(): self
+    public function getSchemaID()
     {
-        $this->_DBAsReturnType = \PDO::FETCH_OBJ;
-        return $this;
+        return $this->configurations['tableSchemaID'];
     }
 
     /**
-     * @inheritDoc
+     * @return ConnectionInterface
      */
-    public function transactionStatus(): bool
+    public function getConnection(): ConnectionInterface
     {
-        return $this->_DBTransactionStatus;
+        return $this->_connection;
     }
 
     /**
-     * @inheritDoc
+     * @return DataMapperInterface
      */
-    public function transactionStart(bool $testMode = false): self
+    public function getDataMapper(): DataMapperInterface
     {
-        $this->_DBTransaction = true;
-        $this->_DBTransactionTestMode = $testMode;
-        $this->_DBTransactionStatus = true;
-        $this->getPDO()->beginTransaction();
-        return $this;
+        return $this->_dataMapper;
     }
 
     /**
-     * @inheritDoc
+     * @return QueryBuilderInterface
      */
-    public function transactionComplete(): self
+    public function getQueryBuilder(): QueryBuilderInterface
     {
-        $this->_DBTransaction = false;
-        if($this->_DBTransactionTestMode === FALSE && $this->_DBTransactionStatus !== FALSE){
-            $this->getPDO()->commit();
-        }else{
-            $this->getPDO()->rollBack();
+        $this->is_get_execute = false;
+        return $this->_queryBuilder;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function lastID(): ?int
+    {
+        return $this->getDataMapper()->getLastID();
+    }
+
+    /**
+     * @param array $fields
+     * @return bool
+     */
+    public function create(array $fields)
+    {
+        $query = $this->getQueryBuilder()->buildQuery([
+            'table'         => $this->getSchema(),
+            'fields'        => $fields,
+            'type'          => 'insert',
+        ], true)->insertQuery();
+        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($fields, $this->getParameters()));
+        return $this->getDataMapper()->numRows() > 0;
+    }
+
+    /**
+     * @param array $selector
+     * @param array $conditions
+     * @param array $parameters
+     * @param array $optional
+     * @return array|Entity[]|object[]|string[]
+     */
+    public function read(array $selector = [], array $conditions = [], array $parameters = [], array $optional = [])
+    {
+        $query = $this->getQueryBuilder()->buildQuery([
+            'table'     => $this->getSchema(),
+            'type'      => 'select',
+            'select'    => $selector,
+            'conditions'    => $conditions,
+            'params'    => $parameters,
+            'extras'    => $optional
+        ], false)->readQuery();
+        $this->getQueryBuilder()->reset();
+        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($conditions, $parameters, $this->getParameters()));
+        if($this->getDataMapper()->numRows() < 1){
+            return [];
         }
-        return $this;
+        return $this->getDataMapper()->results();
     }
 
     /**
-     * @inheritDoc
+     * @param array $fields
+     * @return bool
      */
-    public function rows()
+    public function update(array $fields)
     {
-        return $this->dbGetFetchMode('fetchAll');
+        $query = $this->getQueryBuilder()->buildQuery([
+            'table'         => $this->getSchema(),
+            'type'          => 'update',
+            'fields'        => $fields,
+        ], false)->updateQuery();
+        $this->getQueryBuilder()->reset();
+        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($fields, $this->getParameters()));
+        return $this->getDataMapper()->numRows() > 0;
     }
 
     /**
-     * @inheritDoc
+     * @param array $conditions
+     * @return bool
      */
-    public function row()
+    public function delete(array $conditions = [])
     {
-        $fetch = $this->dbGetFetchMode('fetchAll');
-        return \is_array($fetch) && !empty($fetch) ? $fetch[0] : null;
+        $query = $this->getQueryBuilder()->buildQuery([
+            'table'         => $this->getSchema(),
+            'type'          => 'delete',
+            'conditions'    => $conditions,
+        ], false)
+            ->deleteQuery();
+        $this->getQueryBuilder()->reset();
+        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($conditions, $this->getParameters()));
+        return $this->getDataMapper()->numRows() > 0;
     }
 
     /**
-     * @inheritDoc
+     * @param string $rawQuery
+     * @param array $conditions
+     * @return array
      */
-    public function column(int $column = 0)
+    public function rawQuery(string $rawQuery, array $conditions = []): array
     {
-        if(!isset($this->_DBLastStatement)){
-            throw new \RuntimeException('The query must be executed with the DB::get() method before the column is retrieved.');
-        }
-        return $this->_DBLastStatement->fetchColumn($column);
+        $this->getDataMapper()->persist($rawQuery, $this->getDataMapper()->buildQueryParameters($conditions, $this->getParameters()));
+        return $this->getDataMapper()->numRows() < 1 ? [] : $this->getDataMapper()->results();
     }
 
     /**
-     * @inheritDoc
+     * @param string $name
+     * @param $value
+     * @return $this
      */
     public function setParameter(string $name, $value): self
     {
-        $this->_DBArguments[$name] = $value;
+        $this->_parameters[$name] = $value;
         return $this;
     }
 
     /**
-     * @inheritDoc
+     * @param array $parameters
+     * @return $this
      */
-    public function setParams(array $arguments): self
+    public function setParameters(array $parameters = []): self
     {
-        $this->_DBArguments = $arguments;
+        $this->_parameters = \array_merge($parameters);
         return $this;
     }
 
     /**
-     * @inheritDoc
+     * @param bool $reset
+     * @return array
      */
-    public function get(?string $table = null)
+    public function getParameters(bool $reset = true): array
     {
-        if(!empty($table)){
-            $this->from($table);
+        $params = $this->_parameters;
+        if($reset !== FALSE){
+            $this->_parameters = [];
         }
-        $arguments = !empty($this->_DBArguments) ? $this->_DBArguments : null;
-        $this->_DBArguments = [];
-        if(($stmt = $this->query($this->selectStatementBuild(), $arguments)) !== FALSE){
-            $this->clear();
-            return $this->_DBLastStatement = $stmt;
-        }
-        return false;
+        return $params;
     }
 
     /**
-     * @inheritDoc
+     * @return \PDOStatement
      */
-    public function fromGet($dbOrPDOStatement): DBInterface
+    public function get(): \PDOStatement
     {
-        $clone = clone $this;
-        $clone->clear();
-        if($dbOrPDOStatement instanceof \PDOStatement){
-            $clone->_DBLastStatement = $dbOrPDOStatement;
-            $clone->_DB_NumRows = $dbOrPDOStatement->rowCount();
-        }elseif($dbOrPDOStatement instanceof DBInterface){
-            $clone->_DBLastStatement = $dbOrPDOStatement->_DBLastStatement;
-        }else{
-            throw new \InvalidArgumentException('Get must be a \\PDOStatement or \\SimpleDB\\DB object.');
-        }
-        return $clone;
+        $query = $this->getQueryBuilder()->readQuery();
+
+        $this->getQueryBuilder()->reset();
+        $this->getDataMapper()->prepare($query)
+            ->bindParameters($this->getParameters());
+
+        $statement = $this->getDataMapper()->getStatement();
+        $this->getDataMapper()->execute();
+
+        $this->is_get_execute = true;
+
+        return $statement;
     }
 
     /**
-     * @inheritDoc
+     * @param bool $builder_reset
+     * @return int
      */
-    public function count(): int
+    public function count(bool $builder_reset = false): int
     {
-        return $this->exec($this->selectStatementBuild());
+        $query = $this->getQueryBuilder()->readQuery();
+        if($builder_reset !== FALSE){
+            $this->getQueryBuilder()->reset();
+        }
+        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+        return $this->getDataMapper()->numRows();
     }
 
     /**
-     * @inheritDoc
+     * @return array|Entity|object|null
      */
-    public function query(string $sql, ?array $parameters = null)
+    public function first()
     {
-        if(trim($sql) === ''){
-            return false;
+        if($this->is_get_execute === FALSE){
+            $this->getQueryBuilder()->limit(1);
+            $this->get();
         }
-        $this->_DBExecuteLastQueryStatement = $sql;
-        if($parameters === null && !empty($this->_DBArguments)){
-            $parameters = $this->_DBArguments;
-            $this->_DBArguments = [];
-        }
-        try {
-            if(($query = $this->getPDO()->prepare($sql)) === FALSE){
-                if($this->_DBTransaction !== FALSE){
-                    $this->_DBTransactionStatus = false;
-                }
-                return false;
-            }
-            $res = $query->execute((empty($parameters) ? null : $parameters));
-            if($res === FALSE && $this->_DBTransaction !== FALSE){
-                $this->_DBTransactionStatus = false;
-            }
-        }catch (\PDOException $e) {
-            $this->_DBTransactionStatus = false;
-            $err = $e->getMessage() . ' ' . PHP_EOL . 'SQL Statement : ' . $sql;
-            throw new QueryExecuteException($err);
-        }
-        if($query instanceof \PDOStatement){
-            $this->_DB_NumRows = $query->rowCount();
-            if(($insertId = $this->getPDO()->lastInsertId()) !== FALSE){
-                $this->_DB_LastInsertId = (int)$insertId;
-            }
-        }
-        return $query;
+        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
     }
 
     /**
-     * Veritabanına bir ya da daha fazla veri ekler.
-     *
-     * @param array $data
-     * @return bool
+     * @return array|Entity|object|null
      */
-    public function insert(array $data)
+    public function find()
     {
-        $stmt = $this->query($this->insertStatementBuild($data));
-        $this->clear();
-        return $stmt !== FALSE;
+        if($this->is_get_execute === FALSE){
+            $this->get();
+        }
+        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
     }
 
     /**
-     * Güncelleme sorgusu çalıştırır.
-     *
-     * @param array $data
-     * @return bool
+     * @param int $limit
+     * @param int $offset
+     * @return array
      */
-    public function update(array $data)
+    public function findAll(int $limit = 100, int $offset = 0): array
     {
-        $stmt = $this->query($this->updateStatementBuild($data));
-        $this->clear();
-        return $stmt !== FALSE;
+        if($limit > 0){
+            $this->getQueryBuilder()->limit($limit);
+        }
+        if($offset > 0){
+            $this->getQueryBuilder()->offset($offset);
+        }
+        $query = $this->getQueryBuilder()->readQuery();
+        $this->getQueryBuilder()->reset();
+        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
     }
 
     /**
-     * Silme sorgusu çalıştırır.
-     *
-     * @return bool
+     * @return array
      */
-    public function delete()
+    public function rows(): array
     {
-        $stmt = $this->query($this->deleteStatementBuild());
-        $this->clear();
-        return $stmt !== FALSE;
+        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
     }
 
     /**
-     * @inheritDoc
+     * @return array|Entity|object|null
      */
-    public function exec(string $sql): int
+    public function row()
     {
-        if(trim($sql) === ''){
-            return 0;
-        }
-        $this->_DBExecuteLastQueryStatement = $sql;
-        try {
-            $arguments = !empty($this->_DBArguments) ? $this->_DBArguments : null;
-            if($arguments !== null){
-                if(($stmt = $this->getPDO()->prepare($sql)) === FALSE){
-                    if($this->_DBTransaction !== FALSE){
-                        $this->_DBTransactionStatus = false;
-                    }
-                    return 0;
-                }
-                if($stmt->execute($arguments) === FALSE && $this->_DBTransaction !== FALSE){
-                    $this->_DBTransactionStatus = false;
-                }
-                return $stmt->rowCount();
-            }
-            if(($stmt = $this->getPDO()->exec($sql)) === FALSE){
-                if($this->_DBTransaction !== FALSE){
-                    $this->_DBTransactionStatus = false;
-                }
-                return 0;
-            }
-            return (int)$stmt;
-        }catch (\PDOException $e) {
-            $this->_DBTransactionStatus = false;
-            $err = $e->getMessage()
-                . ' SQL Statement : ' . $sql;
-            throw new QueryExecuteException($err);
-        }
+        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
     }
 
     /**
-     * Bu yöntem DB::get() ile yürütülmüş sorgunun yanıtlarını PDOStatement nesnesinden istenen yöntem ile alır.
-     *
-     * @used-by DB::rows()
-     * @used-by DB::row()
-     * @param string $pdoMethod <p>[fetch|fetchAll]</p>
-     * @return array|EntityInterface|EntityInterface[]|object|object[]|null
+     * @param int $column
+     * @return mixed
      */
-    private function dbGetFetchMode(string $pdoMethod)
+    public function column(int $column = 0)
     {
-        if(!isset($this->_DBLastStatement)){
-            return null;
-        }
-        if(isset($this->_DBAsReturnType)){
-            $asType = $this->_DBAsReturnType;
-            unset($this->_DBAsReturnType);
-            return $this->_DBLastStatement->{$pdoMethod}($asType);
-        }
-        if(!isset($this->entity)){
-            return $this->_DBLastStatement->{$pdoMethod}();
-        }
-        if(is_object($this->entity)){
-            return $this->_DBLastStatement->{$pdoMethod}(\PDO::FETCH_INTO, $this->entity);
-        }
-        if(is_string($this->entity)){
-            return $this->_DBLastStatement->{$pdoMethod}(\PDO::FETCH_CLASS, $this->entity);
-        }
-        return $this->_DBLastStatement->{$pdoMethod}(\PDO::FETCH_BOTH);
+        return $this->getDataMapper()->fetchColumn($column);
     }
 
 }
