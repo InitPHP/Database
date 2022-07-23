@@ -32,13 +32,13 @@ require_once "vendor/autoload.php";
 use \InitPHP\Database\DB;
 
 // Connection
-$db = (new DB([
+$db = new DB([
     'DSN'       => 'mysql:host=localhost;port=3306;dbname=test;charset=utf8mb4',
     'username'  => 'root',
     'password'  => '',
     'charset'   => 'utf8mb4',
     'collation' => 'utf8mb4_general_ci',
-]))->connection();
+]);
 
 // If you are working with a single database, do not forget to make your connection global.
 $db->connectionAsGlobal();
