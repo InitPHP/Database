@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1
+ * @version    1.1.1
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -76,7 +76,11 @@ class DB
             $dataMapperOptions['fetch'] = $this->configurations['fetch'];
         }
         $this->_dataMapper = new DataMapper($this->_connection, $dataMapperOptions);
-        $this->_queryBuilder = new QueryBuilder(($this->configurations['allowedFields'] ?? null));
+        $this->_queryBuilder = new QueryBuilder([
+            'allowedFields'     => ($this->configurations['allowedFields'] ?? null),
+            'schema'            => ($this->configurations['tableSchema'] ?? null),
+            'schemaID'          => ($this->configurations['tableSchemaID'] ?? null),
+        ]);
     }
 
     public function __call($name, $arguments)
@@ -114,17 +118,11 @@ class DB
         throw new DatabaseException('The "' . $name . '" method does not exist.');
     }
 
-    /**
-     * @param string $table
-     * @param string|null $tableSchemeID
-     * @return $this
-     */
-    public function table(string $table, ?string $tableSchemeID = null): self
+    public function table(string $schema, ?string $schemaID = null)
     {
-        $this->configurations['tableSchema'] = $table;
-        $this->configurations['tableSchemaID'] = $tableSchemeID;
-        $this->getQueryBuilder()->table($table, $tableSchemeID);
-        return $this;
+        $this->configurations['tableSchema'] = $schema;
+        $this->configurations['tableSchemaID'] = $schemaID;
+        $this->getQueryBuilder()->table($schema);
     }
 
     /**
@@ -185,7 +183,6 @@ class DB
         $query = $this->getQueryBuilder()->buildQuery([
             'table'         => $this->getSchema(),
             'fields'        => $fields,
-            'type'          => 'insert',
         ], true)->insertQuery();
         $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($fields, $this->getParameters()));
         return $this->getDataMapper()->numRows() > 0;
@@ -201,12 +198,12 @@ class DB
     public function read(array $selector = [], array $conditions = [], array $parameters = [], array $optional = [])
     {
         $query = $this->getQueryBuilder()->buildQuery([
-            'table'     => $this->getSchema(),
-            'type'      => 'select',
-            'select'    => $selector,
+            'table'         => $this->getSchema(),
+            'type'          => 'select',
+            'select'        => $selector,
             'conditions'    => $conditions,
-            'params'    => $parameters,
-            'extras'    => $optional
+            'params'        => $parameters,
+            'extras'        => $optional
         ], false)->readQuery();
         $this->getQueryBuilder()->reset();
         $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($conditions, $parameters, $this->getParameters()));

@@ -34,7 +34,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->select('id', 'name');
         $this->qb->table('user');
 
-        $expected = "SELECT id, name FROM user";
+        $expected = "SELECT id, name FROM user WHERE 1";
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -44,7 +44,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
     {
         $this->qb->from('post');
 
-        $expected = 'SELECT * FROM post';
+        $expected = 'SELECT * FROM post WHERE 1';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -68,7 +68,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->from('post');
         $this->qb->innerJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post INNER JOIN user ON user.id=post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post INNER JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -80,7 +80,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->from('post');
         $this->qb->leftJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post LEFT JOIN user ON user.id=post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post LEFT JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -92,7 +92,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->from('post');
         $this->qb->rightJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post RIGHT JOIN user ON user.id=post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post RIGHT JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -104,7 +104,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->from('post');
         $this->qb->leftOuterJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post LEFT OUTER JOIN user ON user.id=post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post LEFT OUTER JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -116,7 +116,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->from('post');
         $this->qb->rightOuterJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post RIGHT OUTER JOIN user ON user.id=post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post RIGHT OUTER JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -128,7 +128,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->from('book')
             ->limit(5);
 
-        $expected = 'SELECT id FROM book LIMIT 5';
+        $expected = 'SELECT id FROM book WHERE 1 LIMIT 5';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -141,7 +141,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->offset(5);
 
         // Offset is specified If no limit is specified; The limit is 1000.
-        $expected = 'SELECT id FROM book LIMIT 5, 1000';
+        $expected = 'SELECT id FROM book WHERE 1 LIMIT 5, 1000';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -154,7 +154,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->offset(50)
             ->limit(25);
 
-        $expected = 'SELECT id FROM book LIMIT 50, 25';
+        $expected = 'SELECT id FROM book WHERE 1 LIMIT 50, 25';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -168,7 +168,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->limit(-20);
 
         // If limit and offset are negative integers, their absolute values are taken.
-        $expected = 'SELECT id FROM book LIMIT 25, 20';
+        $expected = 'SELECT id FROM book WHERE 1 LIMIT 25, 20';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -178,7 +178,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
     {
         $this->qb->selectDistinct('name')
             ->from('book');
-        $expected = 'SELECT DISTINCT(name) FROM book';
+        $expected = 'SELECT DISTINCT(name) FROM book WHERE 1';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -186,7 +186,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->selectDistinct('author.name')
             ->from('book')
             ->innerJoin('author', 'author.id=book.author');
-        $expected = 'SELECT DISTINCT(author.name) FROM book INNER JOIN author ON author.id=book.author';
+        $expected = 'SELECT DISTINCT(author.name) FROM book INNER JOIN author ON author.id=book.author WHERE 1';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -200,7 +200,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->orderBy('id', 'DESC')
             ->limit(10);
 
-        $expected = 'SELECT name FROM book ORDER BY authorId ASC, id DESC LIMIT 10';
+        $expected = 'SELECT name FROM book WHERE 1 ORDER BY authorId ASC, id DESC LIMIT 10';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -347,5 +347,100 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
+    }
+
+    public function testQBbuildQueryMethod()
+    {
+        $query = $this->qb->buildQuery([
+            'table'     => 'post',
+            'fields'    => [
+                [
+                    'title'     => 'Post Title #1',
+                    'content'   => 'Post Content #1',
+                    'author'    => 5,
+                    'status'    => true,
+                ],
+                [
+                    'title'     => 'Post Title #2',
+                    'content'   => 'Post Content #2',
+                    'status'    => false,
+                ]
+            ],
+        ])->insertQuery();
+        $expected = 'INSERT INTO post (title, content, author, status) VALUES ("Post Title #1", "Post Content #1", 5, 1), ("Post Title #2", "Post Content #2", NULL, 0);';
+        $this->assertEquals($expected, $query);
+
+
+        $query = $this->qb->buildQuery([
+            'select'    => 'id',
+            'table'     => 'book',
+            'conditions'    => [
+                'author'    => 12
+            ],
+            'offset'    => 25,
+            'limit'     => 20,
+        ])->readQuery();
+        $expected = 'SELECT id FROM book WHERE author = :author LIMIT 25, 20';
+        $this->assertEquals($expected, $query);
+
+        $this->qb->select('name, title');
+        $query = $this->qb->buildQuery([
+            'select'    => 'id',
+            'table'     => 'book',
+            'conditions'    => [
+                'author'    => 12
+            ],
+            'offset'    => 25,
+            'limit'     => 20,
+        ], false)->readQuery();
+        $this->qb->reset(); // isReset argümanı false olarak tanımlandığı için öncesindeki select yönteminin eklemlerini resetler.
+        $expected = 'SELECT name, title, id FROM book WHERE author = :author LIMIT 25, 20';
+        $this->assertEquals($expected, $query);
+
+        $query = $this->qb->buildQuery([
+            'table'     => 'post',
+            'fields'    => [
+                'title' => 'Yeni Title',
+                'id'    => 14
+            ],
+            'primary_key'   => 'id'
+        ])->updateQuery();
+        $expected = 'UPDATE post SET title = :title WHERE id = :id';
+        $this->assertEquals($expected, $query);
+
+        $this->qb->where('status', 1);
+        $query = $this->qb->buildQuery([
+            'table'     => 'post',
+            'fields'    => [
+                'title' => 'Yeni Title',
+                'id'    => 14
+            ],
+            'primary_key'   => 'id'
+        ], false)->updateQuery();
+        $this->qb->reset();
+        $expected = 'UPDATE post SET title = :title WHERE status = 1 AND id = :id';
+        $this->assertEquals($expected, $query);
+
+        $query = $this->qb->buildQuery([
+            'table'         => 'post',
+            'conditions'    => [
+                'id'        => 15,
+                'status'    => 0
+            ]
+        ])->deleteQuery();
+        $expected = 'DELETE FROM post WHERE id = :id AND status = :status';
+        $this->assertEquals($expected, $query);
+
+        $this->qb->is('deleted_at', null);
+        $query = $this->qb->buildQuery([
+            'table'         => 'post',
+            'conditions'    => [
+                'id'        => 15,
+                'status'    => 0
+            ]
+        ], false)->deleteQuery();
+        $this->qb->reset();
+        $expected = 'DELETE FROM post WHERE deleted_at IS NULL AND id = :id AND status = :status';
+        $this->assertEquals($expected, $query);
     }
 }

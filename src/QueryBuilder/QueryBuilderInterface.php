@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1
+ * @version    1.1.1
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -191,11 +191,11 @@ interface QueryBuilderInterface
     public function selectSum(string $column): self;
 
     /**
+     * @see QueryBuilderInterface::from()
      * @param string $table
-     * @param string|null $tableSchemaID
      * @return $this
      */
-    public function table(string $table, ?string $tableSchemaID = null): self;
+    public function table(string $table): self;
 
     /**
      * FROM $table
@@ -340,10 +340,10 @@ interface QueryBuilderInterface
     /**
      * Adds Group By to the SQL statement.
      *
-     * @param string $column
+     * @param string ...$column
      * @return $this
      */
-    public function groupBy(string $column): self;
+    public function groupBy(string ...$column): self;
 
     /**
      * It tells the SQL statement how many rows/data to skip.
