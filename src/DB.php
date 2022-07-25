@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.1
+ * @version    1.1.2
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -67,6 +67,8 @@ class DB
             'dsn'       => ($this->configurations['dsn'] ?? ''),
             'username'  => ($this->configurations['username'] ?? ''),
             'password'  => ($this->configurations['password'] ?? ''),
+            'charset'   => ($this->configurations['charset'] ?? 'utf8mb4'),
+            'collation' => ($this->configurations['collation'] ?? 'utf8mb4_general_ci')
         ]);
         $dataMapperOptions = [];
         if(isset($this->configurations['entity'])){
