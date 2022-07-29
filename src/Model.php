@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.2
+ * @version    1.1.3
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -199,6 +199,10 @@ class Model extends DB
 
     private Validation $_validation;
 
+    private bool $isOnlyDeleted = false;
+
+    private ?string $useSoftDeletesField = null;
+
     public function __construct()
     {
         if(empty($this->getProperty('table'))){
@@ -206,8 +210,12 @@ class Model extends DB
             $modelClassSplit = \explode('\\', $modelClass);
             $this->table = \strtolower(\end($modelClassSplit));
         }
-        if($this->getProperty('useSoftDeletes', true) !== FALSE && empty($this->getProperty('deletedField'))){
-            throw new ModelException('There must be a delete column to use soft delete.');
+        if($this->getProperty('useSoftDeletes', true) !== FALSE){
+            $deletedField = $this->getProperty('deletedField');
+            if(empty($deletedField)){
+                throw new ModelException('There must be a delete column to use soft delete.');
+            }
+            $this->useSoftDeletesField = $deletedField;
         }
         $this->_validation = new Validation();
         $this->validationMsgMergeAndSet();
@@ -302,23 +310,38 @@ class Model extends DB
         if(($data = $this->callbacksFunctionHandler($fields, 'beforeUpdate')) === FALSE){
             return false;
         }
+        $updateField = $this->getProperty('updatedField');
         if(!empty($this->getProperty('allowedFields', null))){
-            $updateField = $this->getProperty('updatedField');
             if(!empty($updateField) && !\in_array($updateField, $this->allowedFields)){
                 $this->allowedFields[] = $this->getProperty('updatedField');
             }
+        }
+        if(!empty($updateField)){
             $data[$updateField] = \date('c');
         }
-        $query = $this->getQueryBuilder()->buildQuery([
-            'table'         => $this->getSchema(),
-            'fields'        => $data,
-            'type'          => 'update',
-            'primary_key'   => $this->getSchemaID(),
-        ], false)
-            ->updateQuery();
+
+        $fields = $data;
+        $parameters = [];
+        if(!empty($this->getProperty('primaryKey')) && isset($fields[$this->getProperty('primaryKey')])){
+            $primary_key = $this->getProperty('primaryKey');
+            $this->getQueryBuilder()->where($primary_key, ':' . $primary_key);
+            $parameters[':' . $primary_key] = $fields[$primary_key];
+            unset($fields[$primary_key]);
+        }
+        foreach ($fields as $key => $value) {
+            $parameters[':' . $key] = $value;
+            $fields[$key] = ':' . $key;
+        }
+        $query = $this->getQueryBuilder();
+
+        if(!empty($this->useSoftDeletesField)){
+            $query->is($this->useSoftDeletesField, null);
+        }
+        $query = $query->updateQuery($fields);
         $this->getQueryBuilder()->reset();
 
-        $res = $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters(), $data));
+
+        $res = $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($parameters, $this->getParameters()));
         if($res === FALSE || $this->getDataMapper()->numRows() < 1){
             return false;
         }
@@ -341,34 +364,27 @@ class Model extends DB
         $allowedFields = $this->getProperty('allowedFields', null);
         $injectColumn = [];
         if(!empty($createdField)){
-            if(!empty($allowedFields)){
-                if(!\in_array($createdField, $this->allowedFields)){
-                    $this->allowedFields[] = $createdField;
-                }
+            if(!empty($allowedFields) && !\in_array($createdField, $this->allowedFields)){
+                $this->allowedFields[] = $createdField;
             }
             $injectColumn[$createdField] = \date('c');
         }
 
-        if(\count($data) !== \count($data, \COUNT_RECURSIVE)){
-            $res = [];
-            foreach ($data as $row) {
-                $single = $this->singleInsertDataValid($row, $injectColumn);
-                if($single === FALSE){
-                    continue;
-                }
-                $res[] = $single;
-            }
-            $data = $res;
-            unset($res);
-        }else{
-            $data = $this->singleInsertDataValid($data, $injectColumn);
-            if($data === FALSE){
-                return false;
-            }
+        $data = $this->singleInsertDataValid($data, $injectColumn);
+        if($data === FALSE){
+            return false;
         }
-        $query = $this->getQueryBuilder()->insertQuery($data);
+
+        $fields = [];
+        $parameters = [];
+        foreach ($data as $key => $value) {
+            $parameters[':' . $key] = $value;
+            $fields[$key] = ':' . $key;
+        }
+
+        $query = $this->getQueryBuilder()->insertQuery($fields);
         $this->getQueryBuilder()->reset();
-        $res = $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+        $res = $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($parameters, $this->getParameters()));
         if($res === FALSE || $this->getDataMapper()->numRows() < 1){
             return false;
         }
@@ -385,47 +401,41 @@ class Model extends DB
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a deletable model.');
         }
 
-        if($id !== null && !empty($this->getSchemaID())){
-            $this->where($this->getSchemaID(), $id);
+        $query = $this->getQueryBuilder();
+
+        if(!empty($this->useSoftDeletesField)){
+            $query->is($this->useSoftDeletesField, null);
         }
-        $res = clone $this;
-        $res->asAssoc()
-            ->get();
-        $data = $res->results();
+
+        if($id !== null && !empty($this->getSchemaID())){
+            $query = $query->where($this->getSchemaID(), $id);
+        }
+        $res = clone $query;
+        $resQuery = $res->readQuery();
+        $res->reset();
+        $this->getDataMapper()->asAssoc()
+            ->persist($resQuery, $this->getParameters(false));
+        $data = $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
         unset($res);
 
         if(empty($data) || ($data = $this->callbacksFunctionHandler($data, 'beforeDelete')) === FALSE){
             return false;
         }
 
-        if(!empty($this->getProperty('allowedFields', null))){
-            $deletedField = $this->getProperty('deletedField');
-            if(!empty($deletedField) && !\in_array($deletedField, $this->allowedFields)){
-                $this->allowedFields[] = $deletedField;
+        if(!empty($this->useSoftDeletesField)){
+            if(!empty($this->allowedFields) && !\in_array($this->useSoftDeletesField, $this->allowedFields)){
+                $this->allowedFields[] = $this->useSoftDeletesField;
             }
-        }
-        if($this->getProperty('useSoftDeletes', false) !== FALSE && !empty($this->getProperty('deletedField', false))){
-            $fields = [
-                $this->getProperty('deletedField')  => \date('c')
-            ];
-            $query = $this->getQueryBuilder()->buildQuery([
-                'table'         => $this->getSchema(),
-                'type'          => 'update',
-                'fields'        => $fields,
-            ], false)
-                ->updateQuery();
+            $query = $query->updateQuery([
+                $this->useSoftDeletesField => ':' . $this->useSoftDeletesField,
+            ]);
+            $this->setParameter(':' . $this->useSoftDeletesField, \date('c'));
         }else{
-            $fields = [];
-            $query = $this->getQueryBuilder()
-                ->buildQuery([
-                    'table'     => $this->getSchema(),
-                    'type'      => 'delete'
-                ], false)
-                ->deleteQuery();
+            $query = $query->deleteQuery();
         }
         $this->getQueryBuilder()->reset();
 
-        $res = $this->getDataMapper()->persist($query, $fields);
+        $res = $this->getDataMapper()->persist($query, $this->getParameters(true));
         if($res === FALSE || $this->getDataMapper()->numRows() < 1){
             return false;
         }
@@ -524,6 +534,9 @@ class Model extends DB
         if($this->isReadable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
         }
+        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
+            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
+        }
         return parent::first();
     }
 
@@ -541,6 +554,9 @@ class Model extends DB
             $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $this->getSchemaID(), '=');
             $this->setParameter(':'. $this->getSchemaID(), $id);
         }
+        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
+            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
+        }
         $this->get();
         return $this->row();
     }
@@ -555,6 +571,9 @@ class Model extends DB
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
         }
         $this->getQueryBuilder()->select($column);
+        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
+            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
+        }
         $this->get();
         if($this->getDataMapper()->numRows() < 1){
             return false;
@@ -571,6 +590,9 @@ class Model extends DB
         if($this->isReadable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
         }
+        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
+            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
+        }
         return parent::findAll($limit, $offset);
     }
 
@@ -582,6 +604,9 @@ class Model extends DB
         if($this->isReadable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
         }
+        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
+            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
+        }
         $this->get();
         return $this->rows();
     }
@@ -591,10 +616,10 @@ class Model extends DB
      */
     public function onlyDeleted(): self
     {
-        if(!empty($this->getProperty('useSoftDeletes')) && !empty($this->getProperty('deletedField'))){
-            $this->getQueryBuilder()->isNot($this->getProperty('deletedField'), null);
+        if(!empty($this->useSoftDeletesField)){
+            $this->getQueryBuilder()->isNot($this->useSoftDeletesField, null);
         }
-
+        $this->isOnlyDeleted = true;
         return $this;
     }
 
@@ -603,11 +628,29 @@ class Model extends DB
      */
     public function onlyUndeleted(): self
     {
-        if(!empty($this->getProperty('useSoftDeletes')) && !empty($this->getProperty('deletedField'))){
-            $this->getQueryBuilder()->is($this->getProperty('deletedField'), null);
+        if(!empty($this->useSoftDeletesField)){
+            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
         }
-
+        $this->isOnlyDeleted = false;
         return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function get(): \PDOStatement
+    {
+        $this->isOnlyDeleted = false;
+        return parent::get();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function read(array $selector = [], array $conditions = [], array $parameters = [], array $optional = []): array
+    {
+        $this->isOnlyDeleted = false;
+        return parent::read($selector, $conditions, $parameters, $optional);
     }
 
     /**
@@ -618,9 +661,9 @@ class Model extends DB
         if($this->isDeletable() === FALSE){
             return false;
         }
-        if(!empty($this->getProperty('useSoftDeletes')) && !empty($this->getProperty('deletedField'))){
+        if(!empty($this->useSoftDeletesField)){
             $query = $this->getQueryBuilder()
-                ->isNot($this->getProperty('deletedField'), null)
+                ->isNot($this->useSoftDeletesField, null)
                 ->deleteQuery();
             $this->getQueryBuilder()->reset();
 
