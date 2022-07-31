@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.3
+ * @version    1.1.4
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -17,21 +17,13 @@ namespace InitPHP\Database\QueryBuilder;
 
 interface QueryBuilderInterface
 {
-
-    /**
-     * @param array $args
-     * @param bool $isReset
-     * @return $this
-     */
-    public function buildQuery(array $args = [], bool $isReset = true): self;
-
     /**
      * INSERT SQL Query Build
      *
-     * @param array|null $data
+     * @param array $data
      * @return string
      */
-    public function insertQuery(?array $data = null): string;
+    public function insertQuery(array $data): string;
 
     /**
      * SELECT SQL Query Build
@@ -50,10 +42,10 @@ interface QueryBuilderInterface
     /**
      * UPDATE SQL Query Build
      *
-     * @param array|null $data
+     * @param array $data
      * @return string
      */
-    public function updateQuery(?array $data = null): string;
+    public function updateQuery(array $data): string;
 
 
     /**

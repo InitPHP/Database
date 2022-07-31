@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.3
+ * @version    1.1.4
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -41,10 +41,10 @@ trait From
         return $this->from($table);
     }
 
-    protected function endTableSchema(): string
+    protected function endTableSchema(): ?string
     {
         if(empty($this->tables)){
-            throw new QueryBuilderException('The table name could not be found to build the operation.');
+            return null;
         }
         return \end($this->tables);
     }

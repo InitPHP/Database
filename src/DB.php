@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.3
+ * @version    1.1.4
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -120,11 +120,12 @@ class DB
         throw new DatabaseException('The "' . $name . '" method does not exist.');
     }
 
-    public function table(string $schema, ?string $schemaID = null)
+    public function table(string $schema, ?string $schemaID = null): self
     {
         $this->configurations['tableSchema'] = $schema;
         $this->configurations['tableSchemaID'] = $schemaID;
         $this->getQueryBuilder()->table($schema);
+        return $this;
     }
 
     /**
@@ -169,24 +170,32 @@ class DB
     }
 
     /**
-     * @return int|null
-     */
-    public function lastID(): ?int
-    {
-        return $this->getDataMapper()->getLastID();
-    }
-
-    /**
      * @param array $fields
      * @return bool
      */
     public function create(array $fields)
     {
-        $query = $this->getQueryBuilder()->buildQuery([
-            'table'         => $this->getSchema(),
-            'fields'        => $fields,
-        ], true)->insertQuery();
-        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($fields, $this->getParameters()));
+        $data = [];
+        if(\count($fields) === \count($fields, \COUNT_RECURSIVE)){
+            foreach ($fields as $column => $value) {
+                $data[$column] = ':'.$column;
+                $this->setParameter(':'.$column, $value);
+            }
+        }else{
+            $i = 0; $parameters = [];
+            foreach ($fields as $row) {
+                $data[$i] = [];
+                foreach ($row as $column => $value) {
+                    $data[$i][$column] = ':' . $column . '_' . $i;
+                    $parameters[':' . $column . '_' . $i] = $value;
+                }
+                ++$i;
+            }
+            $this->setParameters($parameters);
+            unset($parameters);
+        }
+        $query = $this->getQueryBuilder()->insertQuery($data);
+        $this->getDataMapper()->persist($query, $this->getParameters(true));
         return $this->getDataMapper()->numRows() > 0;
     }
 
@@ -194,25 +203,27 @@ class DB
      * @param array $selector
      * @param array $conditions
      * @param array $parameters
-     * @param array $optional
      * @return array|Entity[]|object[]|string[]
      */
-    public function read(array $selector = [], array $conditions = [], array $parameters = [], array $optional = []): array
+    public function read(array $selector = [], array $conditions = [], array $parameters = []): array
     {
-        $query = $this->getQueryBuilder()->buildQuery([
-            'table'         => $this->getSchema(),
-            'type'          => 'select',
-            'select'        => $selector,
-            'conditions'    => $conditions,
-            'params'        => $parameters,
-            'extras'        => $optional
-        ], false)->readQuery();
-        $this->getQueryBuilder()->reset();
-        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($conditions, $parameters, $this->getParameters()));
-        if($this->getDataMapper()->numRows() < 1){
-            return [];
+        if(!empty($selector)){
+            $this->getQueryBuilder()->select(...$selector);
         }
-        return $this->getDataMapper()->results();
+        if(!empty($conditions)){
+            foreach ($conditions as $column => $value) {
+                $this->getQueryBuilder()->where($column, ':'.$column);
+                $this->setParameter(':' . $column, $value);
+            }
+        }
+        $query = $this->getQueryBuilder()->readQuery();
+        $this->getQueryBuilder()->reset();
+
+        $parameters = $this->getDataMapper()->buildQueryParameters($this->getParameters(true), $parameters);
+
+        $this->getDataMapper()->persist($query, $parameters);
+
+        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
     }
 
     /**
@@ -221,13 +232,23 @@ class DB
      */
     public function update(array $fields)
     {
-        $query = $this->getQueryBuilder()->buildQuery([
-            'table'         => $this->getSchema(),
-            'type'          => 'update',
-            'fields'        => $fields,
-        ], false)->updateQuery();
+        if(!empty($this->getSchemaID()) && isset($fields[$this->getSchemaID()])){
+            $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $this->getSchemaID());
+            $this->setParameter(':' . $this->getSchemaID(), $fields[$this->getSchemaID()]);
+            unset($fields[$this->getSchemaID()]);
+        }
+        if(empty($fields)){
+            return false;
+        }
+        $data = [];
+        foreach ($fields as $column => $value) {
+            $data[$column] = ':' . $column;
+            $this->setParameter(':' . $column, $value);
+        }
+        $query = $this->getQueryBuilder()->updateQuery($data);
         $this->getQueryBuilder()->reset();
-        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($fields, $this->getParameters()));
+
+        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
         return $this->getDataMapper()->numRows() > 0;
     }
 
@@ -237,14 +258,18 @@ class DB
      */
     public function delete(array $conditions = [])
     {
-        $query = $this->getQueryBuilder()->buildQuery([
-            'table'         => $this->getSchema(),
-            'type'          => 'delete',
-            'conditions'    => $conditions,
-        ], false)
-            ->deleteQuery();
+        if(!empty($this->getSchema())){
+            $this->getQueryBuilder()->table($this->getSchema());
+        }
+        foreach ($conditions as $column => $value) {
+            $this->getQueryBuilder()->where($column, ':'.$column);
+            $this->setParameter(':'.$column, $value);
+        }
+        $query = $this->getQueryBuilder()->deleteQuery();
         $this->getQueryBuilder()->reset();
-        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($conditions, $this->getParameters()));
+
+        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+
         return $this->getDataMapper()->numRows() > 0;
     }
 
@@ -276,7 +301,7 @@ class DB
      */
     public function setParameters(array $parameters = []): self
     {
-        $this->_parameters = \array_merge($parameters);
+        $this->_parameters = \array_merge($this->_parameters, $parameters);
         return $this;
     }
 
@@ -299,8 +324,8 @@ class DB
     public function get(): \PDOStatement
     {
         $query = $this->getQueryBuilder()->readQuery();
-
         $this->getQueryBuilder()->reset();
+
         $this->getDataMapper()->prepare($query)
             ->bindParameters($this->getParameters());
 
@@ -362,9 +387,9 @@ class DB
         if($offset > 0){
             $this->getQueryBuilder()->offset($offset);
         }
-        $query = $this->getQueryBuilder()->readQuery();
-        $this->getQueryBuilder()->reset();
-        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+        if($this->is_get_execute === FALSE){
+            $this->get();
+        }
         return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
     }
 
@@ -373,6 +398,9 @@ class DB
      */
     public function rows(): array
     {
+        if($this->is_get_execute === FALSE){
+            $this->get();
+        }
         return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
     }
 
@@ -381,6 +409,9 @@ class DB
      */
     public function row()
     {
+        if($this->is_get_execute === FALSE){
+            $this->get();
+        }
         return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
     }
 

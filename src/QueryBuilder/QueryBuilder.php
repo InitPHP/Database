@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.3
+ * @version    1.1.4
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -23,9 +23,6 @@ class QueryBuilder implements QueryBuilderInterface
 {
 
     use Select, From, Join, WhereAndHaving, OrderBy, Limit, GroupBy;
-
-    /** @var array */
-    private array $expressions = [];
 
     protected const DEFAULT_EXPRESSIONS = [
         'fields'        => [],
@@ -48,7 +45,6 @@ class QueryBuilder implements QueryBuilderInterface
 
     public function __construct(array $options = [])
     {
-        $this->expressions = self::DEFAULT_EXPRESSIONS;
         if(isset($options['allowedFields']) && \is_array($options['allowedFields']) && !empty($options['allowedFields'])){
             $this->allowedFields = $options['allowedFields'];
         }
@@ -57,7 +53,6 @@ class QueryBuilder implements QueryBuilderInterface
         }
         if(isset($options['schemaID']) && \is_string($options['schemaID']) && !empty($options['schemaID'])){
             $this->schemaID = $options['schemaID'];
-            $this->expressions['primary_key'] = $this->schemaID;
         }
     }
 
@@ -69,73 +64,14 @@ class QueryBuilder implements QueryBuilderInterface
     /**
      * @inheritDoc
      */
-    public function buildQuery(array $args = [], bool $isReset = true): self
+    public function insertQuery(array $data): string
     {
-        $clone = clone $this;
-        if($isReset !== FALSE){
-            $clone->reset();
-        }
-        if(isset($args['table'])){
-            if(!empty($args['table']) && \is_string($args['table'])){
-                $clone->schema = $args['table'];
-            }
-            unset($args['table']);
-        }
-        if((isset($args['primary_key']))){
-            if(!empty($args['primary_key']) && $args['primary_key'] != '0'){
-                $clone->schemaID = $args['primary_key'];
-            }
-            unset($args['primary_key']);
-        }
-        if(isset($args['select'])){
-            $clone->selectorAppend($args['select']);
-            unset($args['select']);
-        }
-        if(isset($args['conditions']) && \is_array($args['conditions']) && !empty($args['conditions'])){
-            $wheres = [];
-            foreach ($args['conditions'] as $key => $value) {
-                $wheres[] = $key . ' = :' . $key;
-            }
-            $clone->whereAppend(\implode(' AND ', $wheres));
-            unset($wheres, $args['conditions']);
-        }
-        if(isset($args['offset'])){
-            if(\is_numeric($args['offset']) && $args['offset'] >= 0){
-                $clone->offset((int)$args['offset']);
-            }
-            unset($args['offset']);
-        }
-        if(isset($args['limit'])){
-            if(\is_numeric($args['limit']) && $args['limit'] >= 1){
-                $clone->limit((int)$args['limit']);
-            }
-            unset($args['limit']);
-        }
-        $clone->expressions = \array_merge(self::DEFAULT_EXPRESSIONS, $clone->expressions, $args);
-        return $clone;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function insertQuery(?array $data = null): string
-    {
-        if($data === null && !empty($this->expressions['fields'])){
-            $data = [];
-            if(\count($this->expressions['fields']) === \count($this->expressions['fields'], \COUNT_RECURSIVE)){
-                foreach ($this->expressions['fields'] as $key => $value) {
-                    $data[$key] = ':'. $key;
-                }
-            }else{
-                $data = $this->expressions['fields'];
-            }
-        }
         if(empty($data)){
             return '';
         }
 
         $this->sqlQuery = 'INSERT INTO'
-            . ' ' . ($this->getSchema() ?? $this->endTableSchema()) . ' ';
+            . ' ' . ($this->endTableSchema() ?? $this->getSchema()) . ' ';
 
         $columns = [];
         $values = [];
@@ -208,7 +144,7 @@ class QueryBuilder implements QueryBuilderInterface
     public function deleteQuery(): string
     {
         $this->sqlQuery = 'DELETE FROM'
-            . ' ' . ($this->getSchema() ?? $this->endTableSchema())
+            . ' ' . ($this->endTableSchema() ?? $this->getSchema())
             . $this->whereQuery()
             . $this->limitQuery();
         return \trim($this->sqlQuery);
@@ -217,14 +153,8 @@ class QueryBuilder implements QueryBuilderInterface
     /**
      * @inheritDoc
      */
-    public function updateQuery(?array $data = null): string
+    public function updateQuery(array $data): string
     {
-        if($data === null && !empty($this->expressions['fields'])){
-            $data = [];
-            foreach ($this->expressions['fields'] as $key => $value) {
-                $data[$key] = ':' . $key;
-            }
-        }
         if(empty($data)){
             return '';
         }
@@ -243,10 +173,10 @@ class QueryBuilder implements QueryBuilderInterface
         }
         $schemaID = $this->getSchemaID();
         if($schemaID !== null && isset($data[$schemaID])){
-            $this->whereAppend($schemaID . ' = :' . $schemaID);
+            $this->where($schemaID, $data[$schemaID]);
         }
         $this->sqlQuery = 'UPDATE '
-            . ($this->getSchema() ?? $this->endTableSchema())
+            . ($this->endTableSchema() ?? $this->getSchema())
             . ' SET '
             . \implode(', ', $update)
             . $this->whereQuery()
@@ -267,10 +197,6 @@ class QueryBuilder implements QueryBuilderInterface
         $this->orderByReset();
         $this->limitReset();
         $this->groupByReset();
-        $this->expressions = self::DEFAULT_EXPRESSIONS;
-        if(isset($this->schemaID) && !empty($this->schemaID)){
-            $this->expressions['primary_key'] = $this->schemaID;
-        }
         return $this;
     }
 
@@ -281,9 +207,6 @@ class QueryBuilder implements QueryBuilderInterface
 
     protected function getSchemaID(): ?string
     {
-        if(isset($this->expressions['primary_key']) && !empty($this->expressions['primary_key']) && $this->expressions['primary_key'] != '0'){
-            return $this->expressions['primary_key'];
-        }
         return  $this->schemaID ?? null;
     }
 

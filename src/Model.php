@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.3
+ * @version    1.1.4
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -205,11 +205,7 @@ class Model extends DB
 
     public function __construct()
     {
-        if(empty($this->getProperty('table'))){
-            $modelClass = \get_called_class();
-            $modelClassSplit = \explode('\\', $modelClass);
-            $this->table = \strtolower(\end($modelClassSplit));
-        }
+        $this->table = $this->getSchema();
         if($this->getProperty('useSoftDeletes', true) !== FALSE){
             $deletedField = $this->getProperty('deletedField');
             if(empty($deletedField)){
@@ -293,7 +289,7 @@ class Model extends DB
         $data = $entity->getAttributes();
         $primaryKey = $this->getProperty('primaryKey');
         if(!empty($primaryKey) && isset($entity->{$primaryKey})){
-            return $this->update($data, $entity->{$primaryKey});
+            return $this->update($data);
         }
         return $this->insert($data);
     }
@@ -311,11 +307,7 @@ class Model extends DB
             return false;
         }
         $updateField = $this->getProperty('updatedField');
-        if(!empty($this->getProperty('allowedFields', null))){
-            if(!empty($updateField) && !\in_array($updateField, $this->allowedFields)){
-                $this->allowedFields[] = $this->getProperty('updatedField');
-            }
-        }
+
         if(!empty($updateField)){
             $data[$updateField] = \date('c');
         }
@@ -360,17 +352,9 @@ class Model extends DB
         if(($data = $this->callbacksFunctionHandler($data, 'beforeInsert')) === FALSE){
             return false;
         }
-        $createdField = $this->getProperty('createdField');
-        $allowedFields = $this->getProperty('allowedFields', null);
-        $injectColumn = [];
-        if(!empty($createdField)){
-            if(!empty($allowedFields) && !\in_array($createdField, $this->allowedFields)){
-                $this->allowedFields[] = $createdField;
-            }
-            $injectColumn[$createdField] = \date('c');
-        }
 
-        $data = $this->singleInsertDataValid($data, $injectColumn);
+        $createdField = $this->getProperty('createdField');
+        $data = $this->singleInsertDataValid($data, (empty($createdField) ? [] : [$createdField => \date('c')]));
         if($data === FALSE){
             return false;
         }
@@ -423,9 +407,6 @@ class Model extends DB
         }
 
         if(!empty($this->useSoftDeletesField)){
-            if(!empty($this->allowedFields) && !\in_array($this->useSoftDeletesField, $this->allowedFields)){
-                $this->allowedFields[] = $this->useSoftDeletesField;
-            }
             $query = $query->updateQuery([
                 $this->useSoftDeletesField => ':' . $this->useSoftDeletesField,
             ]);
@@ -557,7 +538,6 @@ class Model extends DB
         if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
             $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
         }
-        $this->get();
         return $this->row();
     }
 
@@ -647,10 +627,10 @@ class Model extends DB
     /**
      * @inheritDoc
      */
-    public function read(array $selector = [], array $conditions = [], array $parameters = [], array $optional = []): array
+    public function read(array $selector = [], array $conditions = [], array $parameters = []): array
     {
         $this->isOnlyDeleted = false;
-        return parent::read($selector, $conditions, $parameters, $optional);
+        return parent::read($selector, $conditions, $parameters);
     }
 
     /**
