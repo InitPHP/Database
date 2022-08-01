@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.4
+ * @version    1.1.5
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -611,7 +611,7 @@ class Model extends DB
         if(!empty($this->useSoftDeletesField)){
             $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
         }
-        $this->isOnlyDeleted = false;
+        $this->isOnlyDeleted = true;
         return $this;
     }
 
@@ -620,6 +620,9 @@ class Model extends DB
      */
     public function get(): \PDOStatement
     {
+        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
+            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
+        }
         $this->isOnlyDeleted = false;
         return parent::get();
     }
@@ -629,6 +632,9 @@ class Model extends DB
      */
     public function read(array $selector = [], array $conditions = [], array $parameters = []): array
     {
+        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
+            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
+        }
         $this->isOnlyDeleted = false;
         return parent::read($selector, $conditions, $parameters);
     }
