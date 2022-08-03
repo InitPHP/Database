@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.5
+ * @version    1.1.6
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -68,7 +68,7 @@ class DB
             'username'  => ($this->configurations['username'] ?? ''),
             'password'  => ($this->configurations['password'] ?? ''),
             'charset'   => ($this->configurations['charset'] ?? 'utf8mb4'),
-            'collation' => ($this->configurations['collation'] ?? 'utf8mb4_general_ci')
+            'collation' => ($this->configurations['collation'] ?? 'utf8mb4_unicode_ci')
         ]);
         $dataMapperOptions = [];
         if(isset($this->configurations['entity'])){
@@ -90,15 +90,28 @@ class DB
         if(Helper::str_starts_with($name, 'findBy')){
             $attrCamelCase = \substr($name, 6);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
-            $fields = [$attributeName => $arguments[0]];
-            $query = $this->getQueryBuilder()->buildQuery([
-                'table'         => $this->getSchema(),
-                'type'          => 'select',
-                'conditions'    => $fields,
-            ], false)->readQuery();
+            $this->setParameter(':'. $attributeName, $arguments[0]);
+            $this->getQueryBuilder()->where($attributeName, ':' . $attributeName);
+            if($this->getSchema() !== null){
+                $this->getQueryBuilder()->table($this->getSchema());
+            }
+            $query = $this->getQueryBuilder()->readQuery();
             $this->getQueryBuilder()->reset();
-            $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($fields));
+            $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
             return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
+        }
+        if(Helper::str_starts_with($name, 'findOneBy')){
+            $attrCamelCase = \substr($name, 9);
+            $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
+            $this->setParameter(':' . $attributeName, $arguments[0]);
+            $this->getQueryBuilder()->where($attributeName, ':' . $attributeName);
+            if($this->getSchema() !== null){
+                $this->getQueryBuilder()->table($this->getSchema());
+            }
+            $query = $this->getQueryBuilder()->readQuery();
+            $this->getQueryBuilder()->reset();
+            $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+            return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
         }
         if(\method_exists($this->_queryBuilder, $name)){
             $res = $this->getQueryBuilder()->{$name}(...$arguments);
@@ -199,8 +212,9 @@ class DB
         return $this->getDataMapper()->numRows() > 0;
     }
 
+
     /**
-     * @param array $selector
+     * @param string[] $selector
      * @param array $conditions
      * @param array $parameters
      * @return array|Entity[]|object[]|string[]

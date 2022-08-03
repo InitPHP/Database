@@ -33,7 +33,7 @@ use \InitPHP\Database\DB;
 
 // Connection
 $db = new DB([
-    'DSN'       => 'mysql:host=localhost;port=3306;dbname=test;charset=utf8mb4',
+    'dsn'       => 'mysql:host=localhost;port=3306;dbname=test;charset=utf8mb4',
     'username'  => 'root',
     'password'  => '',
     'charset'   => 'utf8mb4',
@@ -200,7 +200,7 @@ class Posts extends Model
     * @var array|string[] 
     */
     protected array $connection = [
-        'DSN'           => '', // Database connection address.
+        'dsn'           => '', // Database connection address.
         'username'      => '', // Username with required privileges in the database.
         'password'      => '', // The password of the database user.
         'charset'       => 'utf8mb4', // The character set to use in the database.

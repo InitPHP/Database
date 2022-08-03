@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.5
+ * @version    1.1.6
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -248,6 +248,13 @@ class Model extends DB
      */
     public final function isError(): bool
     {
+        $errorCode = $this->getDataMapper()->errorCode();
+        if(!empty($errorCode) && $errorCode !== '00000'){
+            $error = $this->getDataMapper()->errorInfo();
+            if(isset($error[2]) && !empty($error[2])){
+                $this->errors[] = $errorCode . ' - ' . $error[2];
+            }
+        }
         return !empty($this->errors);
     }
 
@@ -477,7 +484,7 @@ class Model extends DB
     {
         try {
             $reflection = new \ReflectionClass($model);
-            if($reflection->isInstance($this) === FALSE){
+            if($reflection->isSubclassOf(Model::class) === FALSE){
                 throw new ModelRelationsException('The target class must be a subclass of Model.');
             }
             if(\defined('PHP_VERSION_ID') && \PHP_VERSION_ID >= 80000){

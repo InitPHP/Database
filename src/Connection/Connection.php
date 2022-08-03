@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.5
+ * @version    1.1.6
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -30,7 +30,7 @@ class Connection implements ConnectionInterface
         'username'  => '',
         'password'  => '',
         'charset'   => 'utf8mb4',
-        'collation' => 'utf8mb4_general_ci'
+        'collation' => 'utf8mb4_unicode_ci'
     ];
 
     public function __construct(array $credentials = [])
