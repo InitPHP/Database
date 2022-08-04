@@ -19,7 +19,7 @@ use \InitPHP\Database\Exceptions\{ModelCallbacksException,
     ModelException,
     ModelPermissionException,
     ModelRelationsException};
-use InitPHP\Validation\Validation;
+
 
 
 class Model extends DB
@@ -184,25 +184,6 @@ class Model extends DB
      */
     protected array $validationLabels = [];
 
-    private const VALIDATION_MSG_KEYS = [
-        'integer', 'float', 'numeric', 'string',
-        'boolean', 'array', 'mail', 'mailHost', 'url',
-        'urlHost', 'empty', 'required', 'min', 'max',
-        'length', 'range', 'regex', 'date', 'dateFormat',
-        'ip', 'ipv4', 'ipv6', 'repeat', 'equals', 'startWith',
-        'endWith', 'in', 'notIn', 'alpha', 'alphaNum',
-        'creditCard', 'only', 'strictOnly', 'contains', 'notContains',
-        'is_unique', 'allowedFields'
-    ];
-
-    private array $errors = [];
-
-    private Validation $_validation;
-
-    private bool $isOnlyDeleted = false;
-
-    private ?string $useSoftDeletesField = null;
-
     public function __construct()
     {
         if(empty($this->getProperty('table', null))){
@@ -216,10 +197,7 @@ class Model extends DB
             if(empty($deletedField)){
                 throw new ModelException('There must be a delete column to use soft delete.');
             }
-            $this->useSoftDeletesField = $deletedField;
         }
-        $this->_validation = new Validation();
-        $this->validationMsgMergeAndSet();
         $configuration = $this->getProperty('connection', []);
         $configuration['tableSchema'] = $this->table;
         $configuration['tableSchemaID'] = $this->getProperty('primaryKey', null);
@@ -240,38 +218,12 @@ class Model extends DB
         }
         $configuration['fetch'] = DB::FETCH_ENTITY;
         $configuration['entity'] = $this->getProperty('entity', Entity::class);
+        $configuration['validation'] = [
+            'methods'   => $this->getProperty('validation', []),
+            'messages'  => $this->getProperty('validationMsg', []),
+            'labels'    => $this->getProperty('validationLabels', []),
+        ];
         parent::__construct($configuration);
-    }
-
-    public function __destruct()
-    {
-        unset($this->_validation);
-    }
-
-    /**
-     * @return bool
-     */
-    public final function isError(): bool
-    {
-        $error = $this->getDataMapper()->lastError();
-        if(!empty($error)){
-            $this->errors[] = $error;
-        }
-        return !empty($this->errors);
-    }
-
-    /**
-     * @return array
-     */
-    public final function getError(): array
-    {
-        if(empty($this->errors)){
-            $error = $this->getDataMapper()->lastError();
-            if(!empty($error)){
-                $this->errors[] = $error;
-            }
-        }
-        return $this->errors;
     }
 
     /**
@@ -299,6 +251,7 @@ class Model extends DB
     /**
      * @param array $data
      * @return array|false
+     * @throws Exceptions\ValidationException
      */
     public final function insert(array $data)
     {
@@ -364,7 +317,6 @@ class Model extends DB
         if($this->isUpdatable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a updatable model.');
         }
-        // TODO : Validation Operation
         if(($data = $this->callbacksFunctionHandler($fields, 'beforeUpdate')) === FALSE){
             return false;
         }
@@ -583,110 +535,9 @@ class Model extends DB
         return $this->getProperty('deletable', true);
     }
 
-    protected final function setError(string $column, string $msg, array $context = []): void
-    {
-        $column = \trim($column);
-        if(!isset($context['model'])){
-            $context['model'] = \get_called_class();
-        }
-        $replace = []; $i = 0;
-        foreach ($context as $key => $value) {
-            if(!\is_string($value)){
-                $value = (string)$value;
-            }
-            $replace['{'.$key.'}'] = $value;
-            $replace['{'.$i.'}'] = $value;
-            ++$i;
-        }
-        $msg = \strtr($msg, $replace);
-        if(!empty($column)){
-            $this->errors[$column] = $msg;
-            return;
-        }
-        $this->errors[] = $msg;
-    }
-
     protected final function getProperty($property, $default = null)
     {
         return $this->{$property} ?? $default;
-    }
-
-    /**
-     * @param array $fields
-     * @param array $add
-     * @return false|array
-     */
-    private function singleInsertDataValid(array $fields, array $add = [])
-    {
-        $res = [];
-        $allowedFields = $this->getProperty('allowedFields');
-        foreach ($fields as $column => $value) {
-            if(!empty($allowedFields) && !\in_array($column, $allowedFields, true)){
-                continue;
-            }
-            if($this->isValid($column, $value, []) === FALSE){
-                continue;
-            }
-            $res[$column] = $value;
-        }
-        if(empty($res)){
-            return false;
-        }
-        return empty($add) ? $res : \array_merge($res, $add);
-    }
-
-    private function isValid($column, $value, $uniqueWhere = []): bool
-    {
-        $methods = $this->columnValidationMethods($column);
-        if(empty($methods)){
-            return true;
-        }
-        $localeArray = [];
-        foreach (self::VALIDATION_MSG_KEYS as $msgKey) {
-            $localeArray[$msgKey] = $this->validationMsg[$column][$msgKey] ?? $this->validationMsg[$msgKey];
-        }
-
-        $real_value = (\is_string($value) && Helper::str_starts_with($value, ':')) ? ($this->_DBArguments[$value] ?? $value) : $value;
-
-        $validation = $this->_validation
-            ->setLocaleArray($localeArray)
-            ->setData([$column => $real_value]);
-        if(\in_array('is_unique', $methods)){
-            $key = \array_search('is_unique', $methods);
-            unset($methods[$key]);
-            $res = clone $this;
-            $res->getQueryBuilder()->reset()
-                ->select($column)
-                ->where($column, $value, '=');
-            if (\is_string($value) && Helper::str_starts_with($value, ':')) {
-                $res->setParameter($value, $real_value);
-            }
-            if(\is_array($uniqueWhere) && !empty($uniqueWhere)){
-                foreach ($uniqueWhere as $uKey => $uVal) {
-                    $res->getQueryBuilder()->where($uKey, $uVal, '!=');
-                }
-            }
-            $res->getQueryBuilder()->limit(1);
-            $res->get();
-            if($res->getDataMapper()->numRows() > 0){
-                $this->setError($column, ($this->validationMsg[$column]['is_unique'] ?? '{field} must be unique.'), ['field' => $column]);
-                return false;
-            }
-            unset($res);
-            if(empty($methods)){
-                return true;
-            }
-        }
-        foreach ($methods as $rule) {
-            $validation->rule($column, $rule);
-        }
-        if($validation->validation()){
-            return true;
-        }
-        foreach ($validation->getError() as $err) {
-            $this->setError($column, $err);
-        }
-        return false;
     }
 
     /**
@@ -727,61 +578,6 @@ class Model extends DB
         }
         return $data;
     }
-
-    private function columnValidationMethods(string $column): array
-    {
-        $methods = $this->validation[$column] ?? [];
-        return \is_string($methods) ? \explode('|', $methods) : $methods;
-    }
-
-    private function validationMsgMergeAndSet()
-    {
-        $defaultMsg = [
-            'notValidDefault'   => 'The {field} value is not valid.',
-            'integer'           => '{field} must be an integer.',
-            'float'             => '{field} must be an float.',
-            'numeric'           => '{field} must be an numeric.',
-            'string'            => '{field} must be an string.',
-            'boolean'           => '{field} must be an boolean',
-            'array'             => '{field} must be an Array.',
-            'mail'              => '{field} must be an E-Mail address.',
-            'mailHost'          => '{field} the email must be a {2} mail.',
-            'url'               => '{field} must be an URL address.',
-            'urlHost'           => 'The host of the {field} url must be {2}.',
-            'empty'             => '{field} must be empty.',
-            'required'          => '{field} cannot be left blank.',
-            'min'               => '{field} must be greater than or equal to {2}.',
-            'max'               => '{field} must be no more than {2}.',
-            'length'            => 'The {field} length range must be {2}.',
-            'range'             => 'The {field} range must be {2}.',
-            'regex'             => '{field} must match the {2} pattern.',
-            'date'              => '{field} must be a date.',
-            'dateFormat'        => '{field} must be a correct date format.',
-            'ip'                => '{field} must be the IP Address.',
-            'ipv4'              => '{field} must be the IPv4 Address.',
-            'ipv6'              => '{field} must be the IPv6 Address.',
-            'repeat'            => '{field} must be the same as {field1}',
-            'equals'            => '{field} can only be {2}.',
-            'startWith'         => '{field} must start with "{2}".',
-            'endWith'           => '{field} must end with "{2}".',
-            'in'                => '{field} must contain {2}.',
-            'notIn'             => '{field} must not contain {2}.',
-            'alpha'             => '{field} must contain only alpha characters.',
-            'alphaNum'          => '{field} can only be alphanumeric.',
-            'creditCard'        => '{field} must be a credit card number.',
-            'only'              => 'The {field} value is not valid.',
-            'strictOnly'        => 'The {field} value is not valid.',
-            'contains'          => '{field} must contain {2}.',
-            'notContains'       => '{field} must not contain {2}.',
-            'is_unique'         => '{field} must be unique.',
-            'allowedFields'     => 'Access is not granted to any of the specified tables.'
-        ];
-        $this->_validation->labels($this->getProperty('validationLabels', []));
-        $this->validationMsg = \array_merge($defaultMsg, $this->getProperty('validationMsg', []));
-    }
-
-
-
 
     /**
      * @param Model|string $model

@@ -104,7 +104,7 @@ final class Helper
         }
         return ($value === '?'
             || (bool)\preg_match('/^:[\w]+$/', $value)
-            || (bool)\preg_match('/^[a-zA-Z\_]+\(\)$/', $value));
+            || (bool)\preg_match('/^[a-zA-Z_]+\(\)$/', $value));
     }
 
     public static function queryBindParameter($value, string $syntax = '{value}'): string

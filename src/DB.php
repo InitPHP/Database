@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 namespace InitPHP\Database;
 
-use InitPHP\Database\Exceptions\DatabaseInvalidArgumentException;
+use InitPHP\Database\Validation\Validation;
 use \PDO;
 use \InitPHP\Database\Connection\{Connection, ConnectionInterface};
 use \InitPHP\Database\DataMapper\{DataMapper, DataMapperInterface};
@@ -57,9 +57,18 @@ class DB
         'updatedField'      => null,
         'deletedField'      => null,
         'timestampFormat'   => 'c',
+        'validation'        => [
+            'methods'   => [],
+            'messages'  => [],
+            'labels'    => [],
+        ],
     ];
 
     private bool $isOnlyDeletes = false;
+
+    private Validation $_validation;
+
+    private array $errors = [];
 
     public function __construct(array $configurations)
     {
@@ -85,6 +94,7 @@ class DB
             'schema'            => ($this->configurations['tableSchema'] ?? null),
             'schemaID'          => ($this->configurations['tableSchemaID'] ?? null),
         ]);
+        $this->_validation = new Validation($this->configurations['validation']['methods'], $this->configurations['validation']['messages'], $this->configurations['validation']['labels'], $this);
     }
 
     public function __call($name, $arguments)
@@ -153,6 +163,18 @@ class DB
         return $this->configurations['tableSchemaID'];
     }
 
+    public function isError(): bool
+    {
+        $this->get_error_merge();
+        return !empty($this->errors);
+    }
+
+    public function getError(): array
+    {
+        $this->get_error_merge();
+        return $this->errors;
+    }
+
     /**
      * @return ConnectionInterface
      */
@@ -174,22 +196,35 @@ class DB
      */
     public function getQueryBuilder(): QueryBuilderInterface
     {
-        $this->is_get_execute = false;
         return $this->_queryBuilder;
+    }
+
+    public function getValidation(): Validation
+    {
+        return $this->_validation;
     }
 
     /**
      * @param array $fields
      * @return bool
+     * @throws Exceptions\ValidationException
      */
     public function create(array $fields)
     {
         $data = []; $parameters = [];
         $isCreatedField = !empty($this->configurations['createdField']);
         if(\count($fields) === \count($fields, \COUNT_RECURSIVE)){
+            $this->getValidation()->setData($fields);
             foreach ($fields as $column => $value) {
+                if($this->getValidation()->validation($column, null) === FALSE){
+                    $this->errors[] = $this->getValidation()->getError();
+                    return false;
+                }
                 $data[$column] = ':'.$column;
                 $parameters[':' . $column] = $value;
+            }
+            if(empty($data)){
+                return false;
             }
             if($isCreatedField){
                 $data[$this->configurations['createdField']] = ':' . $this->configurations['createdField'];
@@ -198,9 +233,17 @@ class DB
             $i = 0;
             foreach ($fields as $row) {
                 $data[$i] = [];
+                $this->getValidation()->setData($row);
                 foreach ($row as $column => $value) {
+                    if($this->getValidation()->validation($column, null) === FALSE){
+                        $this->errors[] = $this->getValidation()->getError();
+                        return false;
+                    }
                     $data[$i][$column] = ':' . $column . '_' . $i;
                     $parameters[':' . $column . '_' . $i] = $value;
+                }
+                if(empty($data)){
+                    continue;
                 }
                 if($isCreatedField){
                     $data[$i][$this->configurations['createdField']] = ':' . $this->configurations['createdField'];
@@ -250,16 +293,23 @@ class DB
      */
     public function update(array $fields)
     {
+        $schemaID = null;
         if(!empty($this->getSchemaID()) && isset($fields[$this->getSchemaID()])){
+            $schemaID = $fields[$this->getSchemaID()];
             $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $this->getSchemaID());
-            $this->getDataMapper()->setParameter(':' . $this->getSchemaID(), $fields[$this->getSchemaID()]);
+            $this->getDataMapper()->setParameter(':' . $this->getSchemaID(), $schemaID);
             unset($fields[$this->getSchemaID()]);
         }
         if(empty($fields)){
             return false;
         }
+        $this->getValidation()->setData($fields);
         $data = [];
         foreach ($fields as $column => $value) {
+            if($this->getValidation()->validation($column, $schemaID) === FALSE){
+                $this->errors[] = $this->getValidation()->getError();
+                return false;
+            }
             $data[$column] = ':' . $column;
             $this->getDataMapper()->setParameter(':' . $column, $value);
         }
@@ -427,6 +477,14 @@ class DB
             if($reset !== FALSE){
                 $this->isOnlyDeletes = false;
             }
+        }
+    }
+
+    private function get_error_merge(): void
+    {
+        $error = $this->getDataMapper()->lastError();
+        if(!empty($error) && !\in_array($error, $this->errors)){
+            $this->errors[] = $error;
         }
     }
 
