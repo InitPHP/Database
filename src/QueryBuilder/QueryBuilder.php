@@ -64,6 +64,15 @@ class QueryBuilder implements QueryBuilderInterface
     /**
      * @inheritDoc
      */
+    public function setSchemaID(?string $schemaID): self
+    {
+        $this->schemaID = $schemaID;
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function insertQuery(array $data): string
     {
         if(empty($data)){

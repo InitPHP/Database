@@ -22,6 +22,41 @@ interface DataMapperInterface
 {
 
     /**
+     * @param bool $reset
+     * @return array
+     */
+    public function getParameters(bool $reset = true): array;
+
+    /**
+     * @param string $key
+     * @param $value
+     * @return $this
+     */
+    public function setParameter(string $key, $value): self;
+
+    /**
+     * @param array $parameters
+     * @return $this
+     */
+    public function setParameters(array $parameters): self;
+
+    /**
+     * @param bool $testMode
+     * @return $this
+     */
+    public function transactionStart(bool $testMode = false): self;
+
+    /**
+     * @return bool
+     */
+    public function transactionStatus(): bool;
+
+    /**
+     * @return $this
+     */
+    public function transactionComplete(): self;
+
+    /**
      * @param string $sqlQuery
      * @return $this
      */

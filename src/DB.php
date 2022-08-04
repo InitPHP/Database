@@ -15,6 +15,7 @@ declare(strict_types=1);
 
 namespace InitPHP\Database;
 
+use InitPHP\Database\Exceptions\DatabaseInvalidArgumentException;
 use \PDO;
 use \InitPHP\Database\Connection\{Connection, ConnectionInterface};
 use \InitPHP\Database\DataMapper\{DataMapper, DataMapperInterface};
@@ -46,18 +47,19 @@ class DB
 
     /** @var array */
     private array $configurations = [
-        'dsn'           => null,
-        'username'      => null,
-        'password'      => null,
-        'tableSchema'   => null,
-        'tableSchemaID' => null,
-        'entity'        => Entity::class,
+        'dsn'               => null,
+        'username'          => null,
+        'password'          => null,
+        'tableSchema'       => null,
+        'tableSchemaID'     => null,
+        'entity'            => Entity::class,
+        'createdField'      => null,
+        'updatedField'      => null,
+        'deletedField'      => null,
+        'timestampFormat'   => 'c',
     ];
 
-    /** @var array */
-    private array $_parameters = [];
-
-    private bool $is_get_execute = false;
+    private bool $isOnlyDeletes = false;
 
     public function __construct(array $configurations)
     {
@@ -90,27 +92,22 @@ class DB
         if(Helper::str_starts_with($name, 'findBy')){
             $attrCamelCase = \substr($name, 6);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
-            $this->setParameter(':'. $attributeName, $arguments[0]);
+
             $this->getQueryBuilder()->where($attributeName, ':' . $attributeName);
-            if($this->getSchema() !== null){
-                $this->getQueryBuilder()->table($this->getSchema());
-            }
             $query = $this->getQueryBuilder()->readQuery();
             $this->getQueryBuilder()->reset();
-            $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+            $this->getDataMapper()->setParameter(':'. $attributeName, $arguments[0]);
+            $this->getDataMapper()->persist($query, []);
             return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
         }
         if(Helper::str_starts_with($name, 'findOneBy')){
             $attrCamelCase = \substr($name, 9);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
-            $this->setParameter(':' . $attributeName, $arguments[0]);
+            $this->getDataMapper()->setParameter(':' . $attributeName, $arguments[0]);
             $this->getQueryBuilder()->where($attributeName, ':' . $attributeName);
-            if($this->getSchema() !== null){
-                $this->getQueryBuilder()->table($this->getSchema());
-            }
             $query = $this->getQueryBuilder()->readQuery();
             $this->getQueryBuilder()->reset();
-            $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+            $this->getDataMapper()->persist($query, []);
             return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
         }
         if(\method_exists($this->_queryBuilder, $name)){
@@ -133,11 +130,10 @@ class DB
         throw new DatabaseException('The "' . $name . '" method does not exist.');
     }
 
-    public function table(string $schema, ?string $schemaID = null): self
+    public function setSchemaID(?string $schemaID): self
     {
-        $this->configurations['tableSchema'] = $schema;
         $this->configurations['tableSchemaID'] = $schemaID;
-        $this->getQueryBuilder()->table($schema);
+        $this->getQueryBuilder()->setSchemaID($schemaID);
         return $this;
     }
 
@@ -188,27 +184,37 @@ class DB
      */
     public function create(array $fields)
     {
-        $data = [];
+        $data = []; $parameters = [];
+        $isCreatedField = !empty($this->configurations['createdField']);
         if(\count($fields) === \count($fields, \COUNT_RECURSIVE)){
             foreach ($fields as $column => $value) {
                 $data[$column] = ':'.$column;
-                $this->setParameter(':'.$column, $value);
+                $parameters[':' . $column] = $value;
+            }
+            if($isCreatedField){
+                $data[$this->configurations['createdField']] = ':' . $this->configurations['createdField'];
             }
         }else{
-            $i = 0; $parameters = [];
+            $i = 0;
             foreach ($fields as $row) {
                 $data[$i] = [];
                 foreach ($row as $column => $value) {
                     $data[$i][$column] = ':' . $column . '_' . $i;
                     $parameters[':' . $column . '_' . $i] = $value;
                 }
+                if($isCreatedField){
+                    $data[$i][$this->configurations['createdField']] = ':' . $this->configurations['createdField'];
+                }
                 ++$i;
             }
-            $this->setParameters($parameters);
-            unset($parameters);
         }
+        if($isCreatedField){
+            $parameters[':' . $this->configurations['createdField']] = \date($this->configurations['timestampFormat']);
+        }
+        $this->getDataMapper()->setParameters($parameters);
+        unset($parameters);
         $query = $this->getQueryBuilder()->insertQuery($data);
-        $this->getDataMapper()->persist($query, $this->getParameters(true));
+        $this->getDataMapper()->persist($query, []);
         return $this->getDataMapper()->numRows() > 0;
     }
 
@@ -217,27 +223,25 @@ class DB
      * @param string[] $selector
      * @param array $conditions
      * @param array $parameters
-     * @return array|Entity[]|object[]|string[]
+     * @return array|Entity[]|object[]
      */
     public function read(array $selector = [], array $conditions = [], array $parameters = []): array
     {
-        if(!empty($selector)){
-            $this->getQueryBuilder()->select(...$selector);
-        }
-        if(!empty($conditions)){
-            foreach ($conditions as $column => $value) {
-                $this->getQueryBuilder()->where($column, ':'.$column);
-                $this->setParameter(':' . $column, $value);
-            }
-        }
-        $query = $this->getQueryBuilder()->readQuery();
-        $this->getQueryBuilder()->reset();
-
-        $parameters = $this->getDataMapper()->buildQueryParameters($this->getParameters(true), $parameters);
-
-        $this->getDataMapper()->persist($query, $parameters);
-
+        $this->readQueryHandler($selector, $conditions, $parameters);
         return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
+    }
+
+    /**
+     * @param array $selector
+     * @param array $conditions
+     * @param array $parameters
+     * @return null|array|Entity|object
+     */
+    public function readOne(array $selector = [], array $conditions = [], array $parameters = [])
+    {
+        $this->getQueryBuilder()->limit(1);
+        $this->readQueryHandler($selector, $conditions, $parameters);
+        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
     }
 
     /**
@@ -248,7 +252,7 @@ class DB
     {
         if(!empty($this->getSchemaID()) && isset($fields[$this->getSchemaID()])){
             $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $this->getSchemaID());
-            $this->setParameter(':' . $this->getSchemaID(), $fields[$this->getSchemaID()]);
+            $this->getDataMapper()->setParameter(':' . $this->getSchemaID(), $fields[$this->getSchemaID()]);
             unset($fields[$this->getSchemaID()]);
         }
         if(empty($fields)){
@@ -257,12 +261,16 @@ class DB
         $data = [];
         foreach ($fields as $column => $value) {
             $data[$column] = ':' . $column;
-            $this->setParameter(':' . $column, $value);
+            $this->getDataMapper()->setParameter(':' . $column, $value);
+        }
+        if(!empty($this->configurations['updatedField'])){
+            $data[$this->configurations['updatedField']] = ':' . $this->configurations['updatedField'];
+            $this->getDataMapper()->setParameter(':' . $this->configurations['updatedField'], \date($this->configurations['timestampFormat']));
         }
         $query = $this->getQueryBuilder()->updateQuery($data);
         $this->getQueryBuilder()->reset();
 
-        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+        $this->getDataMapper()->persist($query, []);
         return $this->getDataMapper()->numRows() > 0;
     }
 
@@ -272,17 +280,29 @@ class DB
      */
     public function delete(array $conditions = [])
     {
-        if(!empty($this->getSchema())){
-            $this->getQueryBuilder()->table($this->getSchema());
-        }
         foreach ($conditions as $column => $value) {
             $this->getQueryBuilder()->where($column, ':'.$column);
-            $this->setParameter(':'.$column, $value);
+            $this->getDataMapper()->setParameter(':'.$column, $value);
         }
-        $query = $this->getQueryBuilder()->deleteQuery();
+        if(!empty($this->configurations['deletedField'])){
+            if($this->isOnlyDeletes !== FALSE){
+                $this->getQueryBuilder()->isNot($this->configurations['deletedField'], null);
+                $query = $this->getQueryBuilder()->deleteQuery();
+                $this->isOnlyDeletes = false;
+            }else{
+                $this->getQueryBuilder()->is($this->configurations['deletedField'], null);
+                $this->getDataMapper()->setParameter(':' . $this->configurations['deletedField'], \date($this->configurations['timestampFormat']));
+                $query = $this->getQueryBuilder()->updateQuery([
+                    $this->configurations['deletedField'] => ':' . $this->configurations['deletedField'],
+                ]);
+            }
+        }else{
+            $query = $this->getQueryBuilder()->deleteQuery();
+        }
+
         $this->getQueryBuilder()->reset();
 
-        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
+        $this->getDataMapper()->persist($query, []);
 
         return $this->getDataMapper()->numRows() > 0;
     }
@@ -294,61 +314,8 @@ class DB
      */
     public function rawQuery(string $rawQuery, array $conditions = []): array
     {
-        $this->getDataMapper()->persist($rawQuery, $this->getDataMapper()->buildQueryParameters($conditions, $this->getParameters()));
+        $this->getDataMapper()->persist($rawQuery, $conditions);
         return $this->getDataMapper()->numRows() < 1 ? [] : $this->getDataMapper()->results();
-    }
-
-    /**
-     * @param string $name
-     * @param $value
-     * @return $this
-     */
-    public function setParameter(string $name, $value): self
-    {
-        $this->_parameters[$name] = $value;
-        return $this;
-    }
-
-    /**
-     * @param array $parameters
-     * @return $this
-     */
-    public function setParameters(array $parameters = []): self
-    {
-        $this->_parameters = \array_merge($this->_parameters, $parameters);
-        return $this;
-    }
-
-    /**
-     * @param bool $reset
-     * @return array
-     */
-    public function getParameters(bool $reset = true): array
-    {
-        $params = $this->_parameters;
-        if($reset !== FALSE){
-            $this->_parameters = [];
-        }
-        return $params;
-    }
-
-    /**
-     * @return \PDOStatement
-     */
-    public function get(): \PDOStatement
-    {
-        $query = $this->getQueryBuilder()->readQuery();
-        $this->getQueryBuilder()->reset();
-
-        $this->getDataMapper()->prepare($query)
-            ->bindParameters($this->getParameters());
-
-        $statement = $this->getDataMapper()->getStatement();
-        $this->getDataMapper()->execute();
-
-        $this->is_get_execute = true;
-
-        return $statement;
     }
 
     /**
@@ -357,24 +324,17 @@ class DB
      */
     public function count(bool $builder_reset = false): int
     {
+        $this->deletedFieldBuild($builder_reset);
         $query = $this->getQueryBuilder()->readQuery();
         if($builder_reset !== FALSE){
             $this->getQueryBuilder()->reset();
         }
-        $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($this->getParameters()));
-        return $this->getDataMapper()->numRows();
-    }
-
-    /**
-     * @return array|Entity|object|null
-     */
-    public function first()
-    {
-        if($this->is_get_execute === FALSE){
-            $this->getQueryBuilder()->limit(1);
-            $this->get();
+        $parameters = $this->getDataMapper()->getParameters();
+        $this->getDataMapper()->persist($query, []);
+        if($builder_reset === FALSE && !empty($parameters)){
+            $this->getDataMapper()->setParameters($parameters);
         }
-        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
+        return $this->getDataMapper()->numRows();
     }
 
     /**
@@ -382,10 +342,7 @@ class DB
      */
     public function find()
     {
-        if($this->is_get_execute === FALSE){
-            $this->get();
-        }
-        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
+        return $this->readOne();
     }
 
     /**
@@ -401,10 +358,7 @@ class DB
         if($offset > 0){
             $this->getQueryBuilder()->offset($offset);
         }
-        if($this->is_get_execute === FALSE){
-            $this->get();
-        }
-        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
+        return $this->read();
     }
 
     /**
@@ -412,10 +366,7 @@ class DB
      */
     public function rows(): array
     {
-        if($this->is_get_execute === FALSE){
-            $this->get();
-        }
-        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
+        return $this->read();
     }
 
     /**
@@ -423,10 +374,7 @@ class DB
      */
     public function row()
     {
-        if($this->is_get_execute === FALSE){
-            $this->get();
-        }
-        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
+        return $this->readOne();
     }
 
     /**
@@ -436,6 +384,50 @@ class DB
     public function column(int $column = 0)
     {
         return $this->getDataMapper()->fetchColumn($column);
+    }
+
+    public function onlyDeleted(): self
+    {
+        $this->isOnlyDeletes = true;
+        return $this;
+    }
+
+    public function onlyUndeleted(): self
+    {
+        $this->isOnlyDeletes = false;
+        return $this;
+    }
+
+    private function readQueryHandler(array $selector = [], array $conditions = [], array $parameters = []): void
+    {
+        if(!empty($selector)){
+            $this->getQueryBuilder()->select(...$selector);
+        }
+        if(!empty($conditions)){
+            foreach ($conditions as $column => $value) {
+                $this->getQueryBuilder()->where($column, ':'.$column);
+                $this->getDataMapper()->setParameter(':' . $column, $value);
+            }
+        }
+        $this->deletedFieldBuild();
+        $query = $this->getQueryBuilder()->readQuery();
+        $this->getQueryBuilder()->reset();
+
+        $this->getDataMapper()->persist($query, $parameters);
+    }
+
+    private function deletedFieldBuild(bool $reset = true): void
+    {
+        if(!empty($this->configurations['deletedField'])){
+            if($this->isOnlyDeletes === FALSE){
+                $this->getQueryBuilder()->is($this->configurations['deletedField'], null);
+            }else{
+                $this->getQueryBuilder()->isNot($this->configurations['deletedField'], null);
+            }
+            if($reset !== FALSE){
+                $this->isOnlyDeletes = false;
+            }
+        }
     }
 
 }

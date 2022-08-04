@@ -17,6 +17,13 @@ namespace InitPHP\Database\QueryBuilder;
 
 interface QueryBuilderInterface
 {
+
+    /**
+     * @param string|null $schemaID
+     * @return $this
+     */
+    public function setSchemaID(?string $schemaID): self;
+
     /**
      * INSERT SQL Query Build
      *

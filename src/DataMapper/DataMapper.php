@@ -31,6 +31,8 @@ class DataMapper implements DataMapperInterface
 
     private ConnectionInterface $db;
 
+    private array $parameters = [];
+
     private \PDOStatement $statement;
 
     private string $last_sql = '';
@@ -67,6 +69,46 @@ class DataMapper implements DataMapperInterface
         throw new DataMapperException('The "' . $name . '" method does not exist.');
     }
 
+    /**
+     * @inheritDoc
+     */
+    public function setParameter(string $key, $value): self
+    {
+        $key = ':' . \ltrim($key, ':');
+        $this->parameters[$key] = $value;
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function setParameters(array $parameters): self
+    {
+        if($parameters === []){
+            return $this;
+        }
+        foreach ($parameters as $key => $value) {
+            $key = ':' . \ltrim($key, ':');
+            $this->parameters[$key] = $value;
+        }
+        return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getParameters(bool $reset = true): array
+    {
+        $parameters = $this->parameters;
+        if($reset !== FALSE){
+            $this->parameters = [];
+        }
+        return $parameters;
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function transactionStart(bool $testMode = false): self
     {
         $this->transaction['status'] = true;
@@ -76,11 +118,17 @@ class DataMapper implements DataMapperInterface
         return $this;
     }
 
+    /**
+     * @inheritDoc
+     */
     public function transactionStatus(): bool
     {
         return $this->transaction['status'];
     }
 
+    /**
+     * @inheritDoc
+     */
     public function transactionComplete(): self
     {
         $this->transaction['enable'] = false;
@@ -232,7 +280,11 @@ class DataMapper implements DataMapperInterface
             return false;
         }
         try {
-            if(($res = $this->statement->execute()) === FALSE){
+            $parameters = $this->getParameters();
+            if(empty($parameters)){
+                $parameters = null;
+            }
+            if(($res = $this->statement->execute($parameters)) === FALSE){
                 $this->transactionFailed();
             }
         }catch (\PDOException $e) {
@@ -280,10 +332,7 @@ class DataMapper implements DataMapperInterface
      */
     public function buildQueryParameters(array ...$parameters): array
     {
-        if(\count($parameters) > 1){
-            return \array_merge(...$parameters);
-        }
-        return \current($parameters);
+        return \array_merge(...$parameters);
     }
 
     /**
@@ -292,7 +341,7 @@ class DataMapper implements DataMapperInterface
     public function persist(string $sqlQuery, array $parameters): bool
     {
         return $this->prepare($sqlQuery)
-            ->bindParameters($parameters)
+            ->bindParameters($this->buildQueryParameters($parameters, $this->getParameters()))
             ->execute();
     }
 

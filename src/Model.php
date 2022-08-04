@@ -205,7 +205,12 @@ class Model extends DB
 
     public function __construct()
     {
-        $this->table = $this->getSchema();
+        if(empty($this->getProperty('table', null))){
+            $modelClass = \get_called_class();
+            $modelReflection = new \ReflectionClass($modelClass);
+            $this->table = \strtolower($modelReflection->getShortName());
+            unset($modelReflection);
+        }
         if($this->getProperty('useSoftDeletes', true) !== FALSE){
             $deletedField = $this->getProperty('deletedField');
             if(empty($deletedField)){
@@ -219,18 +224,18 @@ class Model extends DB
         $configuration['tableSchema'] = $this->table;
         $configuration['tableSchemaID'] = $this->getProperty('primaryKey', null);
         $configuration['allowedFields'] = $this->getProperty('allowedFields', null);
+        $configuration['createdField'] = $this->getProperty('createdField');
+        $configuration['updatedField'] = $this->getProperty('updatedField');
+        $configuration['deletedField'] = $this->getProperty('deletedField');
         if($configuration['allowedFields'] !== null){
-            $created_at = $this->getProperty('createdField');
-            if(!empty($created_at)){
-                $configuration['allowedFields'][] = $created_at;
+            if(!empty($configuration['createdField'])){
+                $configuration['allowedFields'][] = $configuration['createdField'];
             }
-            $updated_at = $this->getProperty('updatedField');
-            if(!empty($updated_at)){
-                $configuration['allowedFields'][] = $updated_at;
+            if(!empty($configuration['updatedField'])){
+                $configuration['allowedFields'][] = $configuration['updatedField'];
             }
-            $deleted_at = $this->getProperty('deletedField');
-            if(!empty($deleted_at)){
-                $configuration['allowedFields'][] = $deleted_at;
+            if(!empty($configuration['deletedField'])){
+                $configuration['allowedFields'][] = $configuration['deletedField'];
             }
         }
         $configuration['fetch'] = DB::FETCH_ENTITY;
@@ -248,12 +253,9 @@ class Model extends DB
      */
     public final function isError(): bool
     {
-        $errorCode = $this->getDataMapper()->errorCode();
-        if(!empty($errorCode) && $errorCode !== '00000'){
-            $error = $this->getDataMapper()->errorInfo();
-            if(isset($error[2]) && !empty($error[2])){
-                $this->errors[] = $errorCode . ' - ' . $error[2];
-            }
+        $error = $this->getDataMapper()->lastError();
+        if(!empty($error)){
+            $this->errors[] = $error;
         }
         return !empty($this->errors);
     }
@@ -263,6 +265,12 @@ class Model extends DB
      */
     public final function getError(): array
     {
+        if(empty($this->errors)){
+            $error = $this->getDataMapper()->lastError();
+            if(!empty($error)){
+                $this->errors[] = $error;
+            }
+        }
         return $this->errors;
     }
 
@@ -274,6 +282,7 @@ class Model extends DB
     {
         $clone = clone $this;
         $clone->primaryKey = $columnName;
+        $clone->setSchemaID($columnName);
         return $clone;
     }
 
@@ -285,6 +294,51 @@ class Model extends DB
     public final function create(array $fields)
     {
         return $this->insert($fields);
+    }
+
+    /**
+     * @param array $data
+     * @return array|false
+     */
+    public final function insert(array $data)
+    {
+        if($this->isWritable() === FALSE){
+            throw new ModelPermissionException('"' . \get_called_class() . '" is not a writable model.');
+        }
+        if(($data = $this->callbacksFunctionHandler($data, 'beforeInsert')) === FALSE){
+            return false;
+        }
+
+        // TODO : Validation Operation
+
+        $create = parent::create($data);
+
+        if($create === FALSE){
+            return false;
+        }
+        return $data = $this->callbacksFunctionHandler($data, 'afterInsert');
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public final function read(array $selector = [], array $conditions = [], array $parameters = []): array
+    {
+        if($this->isReadable() === FALSE){
+            throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
+        }
+        return parent::read($selector, $conditions, $parameters);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public final function readOne(array $selector = [], array $conditions = [], array $parameters = [])
+    {
+        if($this->isReadable() === FALSE){
+            throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
+        }
+        parent::readOne($selector, $conditions, $parameters);
     }
 
     /**
@@ -310,77 +364,18 @@ class Model extends DB
         if($this->isUpdatable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a updatable model.');
         }
+        // TODO : Validation Operation
         if(($data = $this->callbacksFunctionHandler($fields, 'beforeUpdate')) === FALSE){
             return false;
         }
-        $updateField = $this->getProperty('updatedField');
-
-        if(!empty($updateField)){
-            $data[$updateField] = \date('c');
-        }
-
-        $fields = $data;
-        $parameters = [];
-        if(!empty($this->getProperty('primaryKey')) && isset($fields[$this->getProperty('primaryKey')])){
-            $primary_key = $this->getProperty('primaryKey');
-            $this->getQueryBuilder()->where($primary_key, ':' . $primary_key);
-            $parameters[':' . $primary_key] = $fields[$primary_key];
-            unset($fields[$primary_key]);
-        }
-        foreach ($fields as $key => $value) {
-            $parameters[':' . $key] = $value;
-            $fields[$key] = ':' . $key;
-        }
-        $query = $this->getQueryBuilder();
-
-        if(!empty($this->useSoftDeletesField)){
-            $query->is($this->useSoftDeletesField, null);
-        }
-        $query = $query->updateQuery($fields);
-        $this->getQueryBuilder()->reset();
-
-
-        $res = $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($parameters, $this->getParameters()));
-        if($res === FALSE || $this->getDataMapper()->numRows() < 1){
+        $update = parent::update($data);
+        if(!$update){
             return false;
         }
+
         return $data = $this->callbacksFunctionHandler($data, 'afterUpdate');
     }
 
-    /**
-     * @param array $data
-     * @return array|false
-     */
-    public final function insert(array $data)
-    {
-        if($this->isWritable() === FALSE){
-            throw new ModelPermissionException('"' . \get_called_class() . '" is not a writable model.');
-        }
-        if(($data = $this->callbacksFunctionHandler($data, 'beforeInsert')) === FALSE){
-            return false;
-        }
-
-        $createdField = $this->getProperty('createdField');
-        $data = $this->singleInsertDataValid($data, (empty($createdField) ? [] : [$createdField => \date('c')]));
-        if($data === FALSE){
-            return false;
-        }
-
-        $fields = [];
-        $parameters = [];
-        foreach ($data as $key => $value) {
-            $parameters[':' . $key] = $value;
-            $fields[$key] = ':' . $key;
-        }
-
-        $query = $this->getQueryBuilder()->insertQuery($fields);
-        $this->getQueryBuilder()->reset();
-        $res = $this->getDataMapper()->persist($query, $this->getDataMapper()->buildQueryParameters($parameters, $this->getParameters()));
-        if($res === FALSE || $this->getDataMapper()->numRows() < 1){
-            return false;
-        }
-        return $data = $this->callbacksFunctionHandler($data, 'afterInsert');
-    }
 
     /**
      * @param string|int|null $id
@@ -392,60 +387,45 @@ class Model extends DB
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a deletable model.');
         }
 
-        $query = $this->getQueryBuilder();
-
-        if(!empty($this->useSoftDeletesField)){
-            $query->is($this->useSoftDeletesField, null);
-        }
-
         if($id !== null && !empty($this->getSchemaID())){
-            $query = $query->where($this->getSchemaID(), $id);
+            $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $this->getSchemaID(), '=');
+            $this->getDataMapper()->setParameter(':' . $this->getSchemaID(), $id);
         }
+
+        $query = $this->getQueryBuilder();
         $res = clone $query;
         $resQuery = $res->readQuery();
         $res->reset();
-        $this->getDataMapper()->asAssoc()
-            ->persist($resQuery, $this->getParameters(false));
+        $parameters = $this->getDataMapper()->getParameters();
+        $this->getDataMapper()
+            ->asAssoc()
+            ->persist($resQuery, $parameters);
         $data = $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
         unset($res);
+        if(!empty($parameters)){
+            $this->getDataMapper()->setParameters($parameters);
+            unset($parameters);
+        }
 
         if(empty($data) || ($data = $this->callbacksFunctionHandler($data, 'beforeDelete')) === FALSE){
             return false;
         }
 
-        if(!empty($this->useSoftDeletesField)){
-            $query = $query->updateQuery([
-                $this->useSoftDeletesField => ':' . $this->useSoftDeletesField,
-            ]);
-            $this->setParameter(':' . $this->useSoftDeletesField, \date('c'));
-        }else{
-            $query = $query->deleteQuery();
-        }
-        $this->getQueryBuilder()->reset();
+        $delete = parent::delete();
 
-        $res = $this->getDataMapper()->persist($query, $this->getParameters(true));
-        if($res === FALSE || $this->getDataMapper()->numRows() < 1){
+        if($delete === FALSE){
             return false;
         }
         return $data = $this->callbacksFunctionHandler($data, 'afterDelete');
     }
 
-    public final function getSchema(): string
-    {
-        $table = $this->getProperty('table', null);
-        if(empty($table)){
-            $modelClass = \get_called_class();
-            $modelClassSplit = \explode('\\', $modelClass);
-            $table = $this->table = \strtolower(\end($modelClassSplit));
-        }
-        return $table;
-    }
-
-    public final function getSchemaID()
-    {
-        return $this->getProperty('primaryKey');
-    }
-
+    /**
+     * @param string $model
+     * @param string|null $fromColumn
+     * @param string|null $targetColumn
+     * @param string $joinType
+     * @return $this
+     */
     public final function relations(string $model, ?string $fromColumn = null, ?string $targetColumn = null, string $joinType = 'INNER'): self
     {
         $from = [
@@ -477,55 +457,35 @@ class Model extends DB
     }
 
     /**
-     * @param Model|string $model
-     * @return string[]
+     * @param array $selectors
+     * @param array $conditions
+     * @param array $parameters
+     * @return array
      */
-    private function getModelClassSchemaAndSchemaID($model): array
+    public final function findBy(array $selectors = [], array $conditions = [], array $parameters = []): array
     {
-        try {
-            $reflection = new \ReflectionClass($model);
-            if($reflection->isSubclassOf(Model::class) === FALSE){
-                throw new ModelRelationsException('The target class must be a subclass of Model.');
-            }
-            if(\defined('PHP_VERSION_ID') && \PHP_VERSION_ID >= 80000){
-                $table = $reflection->getProperty('table');
-                $primaryKey = $reflection->getProperty('primaryKey');
-                if(($tableSchema = $table->getDefaultValue()) === null){
-                    $tableSchema = \strtolower($reflection->getShortName());
-                }
-                $tableSchemaID = $primaryKey->getDefaultValue();
-                return [
-                    'tableSchema'   => $tableSchema,
-                    'tableSchemaID' => $tableSchemaID
-                ];
-            }
-            if(\is_object($model)){
-                return [
-                    'tableSchema'   => $model->getSchema(),
-                    'tableSchemaID' => $model->getSchemaID(),
-                ];
-            }
-            /** @var Model $instance */
-            $instance = $reflection->newInstance();
-            return [
-                'tableSchema'   => $instance->getSchema(),
-                'tableSchemaID' => $instance->getSchemaID(),
-            ];
-        } catch (\Exception $e) {
-            throw new ModelRelationsException($e->getMessage(), (int)$e->getCode());
-        }
+        return $this->read($selectors, $conditions, $parameters);
     }
 
+    /**
+     * @param array $conditions
+     * @return array|Entity|object|null
+     */
+    public final function findOneBy(array $conditions = [])
+    {
+        return $this->readOne([], $conditions);
+    }
 
+    /**
+     * @return array|Entity|object|null
+     */
     public final function first()
     {
         if($this->isReadable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
         }
-        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
-            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
-        }
-        return parent::first();
+        $this->getQueryBuilder()->limit(1);
+        return $this->findOneBy();
     }
 
     /**
@@ -540,33 +500,9 @@ class Model extends DB
         $this->getQueryBuilder()->offset(0)->limit(1);
         if($id !== null && !empty($this->getSchemaID())){
             $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $this->getSchemaID(), '=');
-            $this->setParameter(':'. $this->getSchemaID(), $id);
+            $this->getDataMapper()->setParameter(':'. $this->getSchemaID(), $id);
         }
-        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
-            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
-        }
-        return $this->row();
-    }
-
-    /**
-     * @param string $column
-     * @return array|false
-     */
-    public function findColumn(string $column)
-    {
-        if($this->isReadable() === FALSE){
-            throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
-        }
-        $this->getQueryBuilder()->select($column);
-        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
-            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
-        }
-        $this->get();
-        if($this->getDataMapper()->numRows() < 1){
-            return false;
-        }
-        $row = $this->getDataMapper()->results();
-        return !empty($row) ? $row : false;
+        return $this->findOneBy();
     }
 
     /**
@@ -577,73 +513,30 @@ class Model extends DB
         if($this->isReadable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
         }
-        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
-            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
-        }
         return parent::findAll($limit, $offset);
     }
 
     /**
-     * @return array|false
+     * @param string $column
+     * @return array|Entity[]|object[]
+     */
+    public function findColumn(string $column): array
+    {
+        if($this->isReadable() === FALSE){
+            throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
+        }
+        return parent::read([$column]);
+    }
+
+    /**
+     * @return array
      */
     public function all(): array
     {
         if($this->isReadable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
         }
-        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
-            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
-        }
-        $this->get();
-        return $this->rows();
-    }
-
-    /**
-     * @return $this
-     */
-    public function onlyDeleted(): self
-    {
-        if(!empty($this->useSoftDeletesField)){
-            $this->getQueryBuilder()->isNot($this->useSoftDeletesField, null);
-        }
-        $this->isOnlyDeleted = true;
-        return $this;
-    }
-
-    /**
-     * @return $this
-     */
-    public function onlyUndeleted(): self
-    {
-        if(!empty($this->useSoftDeletesField)){
-            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
-        }
-        $this->isOnlyDeleted = true;
-        return $this;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function get(): \PDOStatement
-    {
-        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
-            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
-        }
-        $this->isOnlyDeleted = false;
-        return parent::get();
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function read(array $selector = [], array $conditions = [], array $parameters = []): array
-    {
-        if(!empty($this->useSoftDeletesField) && $this->isOnlyDeleted === FALSE){
-            $this->getQueryBuilder()->is($this->useSoftDeletesField, null);
-        }
-        $this->isOnlyDeleted = false;
-        return parent::read($selector, $conditions, $parameters);
+        return parent::read();
     }
 
     /**
@@ -654,15 +547,8 @@ class Model extends DB
         if($this->isDeletable() === FALSE){
             return false;
         }
-        if(!empty($this->useSoftDeletesField)){
-            $query = $this->getQueryBuilder()
-                ->isNot($this->useSoftDeletesField, null)
-                ->deleteQuery();
-            $this->getQueryBuilder()->reset();
-
-            return $this->getDataMapper()->persist($query, []) !== FALSE;
-        }
-        return false;
+        $this->onlyDeleted();
+        return parent::delete();
     }
 
     /**
@@ -894,5 +780,47 @@ class Model extends DB
         $this->validationMsg = \array_merge($defaultMsg, $this->getProperty('validationMsg', []));
     }
 
+
+
+
+    /**
+     * @param Model|string $model
+     * @return string[]
+     */
+    private function getModelClassSchemaAndSchemaID($model): array
+    {
+        try {
+            $reflection = new \ReflectionClass($model);
+            if($reflection->isSubclassOf(Model::class) === FALSE){
+                throw new ModelRelationsException('The target class must be a subclass of Model.');
+            }
+            if(\defined('PHP_VERSION_ID') && \PHP_VERSION_ID >= 80000){
+                $table = $reflection->getProperty('table');
+                $primaryKey = $reflection->getProperty('primaryKey');
+                if(($tableSchema = $table->getDefaultValue()) === null){
+                    $tableSchema = \strtolower($reflection->getShortName());
+                }
+                $tableSchemaID = $primaryKey->getDefaultValue();
+                return [
+                    'tableSchema'   => $tableSchema,
+                    'tableSchemaID' => $tableSchemaID
+                ];
+            }
+            if(\is_object($model)){
+                return [
+                    'tableSchema'   => $model->getSchema(),
+                    'tableSchemaID' => $model->getSchemaID(),
+                ];
+            }
+            /** @var Model $instance */
+            $instance = $reflection->newInstance();
+            return [
+                'tableSchema'   => $instance->getSchema(),
+                'tableSchemaID' => $instance->getSchemaID(),
+            ];
+        } catch (\Exception $e) {
+            throw new ModelRelationsException($e->getMessage(), (int)$e->getCode());
+        }
+    }
 
 }
