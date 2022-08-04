@@ -10,7 +10,6 @@ PHP has powerful database abstraction libraries like Doctrine and Laravel Eloque
 
 - PHP 7.4 and later.
 - PHP PDO extension.
-- [InitPHP Validation](https://github.com/InitPHP/Validation) (Only if you want to use validation operations in Model class.)
 
 ## Supported Databases
 
@@ -312,7 +311,7 @@ class Posts extends Model
     protected bool $updatable = true;
 
     protected array $validation = [
-        'id'    => 'is_unique|integer', // Validation methods can be string separated by a perpendicular line.
+        'id'    => 'is_unique|int', // Validation methods can be string separated by a perpendicular line.
         'title' => ['required', 'string'], // Validation methods can be given as an array.
     ];
 
