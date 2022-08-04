@@ -124,6 +124,25 @@ class DataMapper implements DataMapperInterface
     /**
      * @inheritDoc
      */
+    public function lastError(): ?string
+    {
+        if(!isset($this->statement)){
+            return null;
+        }
+        $errorCode = $this->statement->errorCode();
+        if($errorCode === null || empty(\trim($errorCode, "0 \t\n\r\0\x0B"))){
+            return null;
+        }
+        $errorInfo = $this->statement->errorInfo();
+        if(!isset($errorInfo[2])){
+            return null;
+        }
+        return $errorCode . ' - ' . $errorInfo[2];
+    }
+
+    /**
+     * @inheritDoc
+     */
     public function bind($value)
     {
         if(\is_bool($value) || \intval($value)){

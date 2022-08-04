@@ -33,6 +33,11 @@ interface DataMapperInterface
     public function lastSQL(): string;
 
     /**
+     * @return string|null
+     */
+    public function lastError(): ?string;
+
+    /**
      * @param $value
      * @return mixed
      */
