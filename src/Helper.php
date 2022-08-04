@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.6
+ * @version    1.1.7
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -97,15 +97,19 @@ final class Helper
         return $attrName;
     }
 
+    public static function isSQLParameterOrFunction($value): bool
+    {
+        if(!\is_string($value)){
+            return false;
+        }
+        return ($value === '?'
+            || (bool)\preg_match('/^:[\w]+$/', $value)
+            || (bool)\preg_match('/^[a-zA-Z\_]+\(\)$/', $value));
+    }
+
     public static function queryBindParameter($value, string $syntax = '{value}'): string
     {
-        if(
-            \is_string($value) && (
-                $value == '?' ||
-                (bool)\preg_match('/^:[\w]+$/', $value) ||
-                (bool)\preg_match('/^[a-zA-Z\_]+\(\)$/', $value)
-            )
-        ){
+        if(self::isSQLParameterOrFunction($value)){
             return $value;
         }
         if($value === null){
