@@ -291,7 +291,7 @@ class Model extends DB
         if($this->isReadable() === FALSE){
             throw new ModelPermissionException('"' . \get_called_class() . '" is not a readable model.');
         }
-        parent::readOne($selector, $conditions, $parameters);
+        return parent::readOne($selector, $conditions, $parameters);
     }
 
     /**
