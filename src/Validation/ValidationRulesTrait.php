@@ -48,39 +48,39 @@ trait ValidationRulesTrait
 
     protected function string($data): bool
     {
-        return (bool)\preg_match('/[\S]+/', $data);
+        return (bool)\preg_match('/[\S]+/', (string)$data);
     }
 
     protected function int($data): bool
     {
-        return (bool)\preg_match('/^([+|\-]*)[0-9]+$/', $data);
+        return (bool)\preg_match('/^([+|\-]*)[0-9]+$/', (string)$data);
     }
 
     protected function float($data): bool
     {
-        return (bool)\preg_match('/^[+|\-]*[0-9]+[.]+[0-9]+$/', $data);
+        return (bool)\preg_match('/^[+|\-]*[0-9]+[.]+[0-9]+$/', (string)$data);
     }
 
     protected function numeric($data):bool
     {
-        return (bool)\preg_match('/^[+|\-]*[0-9]+([.]+[0-9]+)*$/', $data);
+        return (bool)\preg_match('/^[+|\-]*[0-9]+([.]+[0-9]+)*$/', (string)$data);
     }
 
     protected function alpha($data): bool
     {
         $pattern = '[a-zA-ZğĞŞşÜüİıÖöÇç]';
-        return (bool)\preg_match('/^' . $pattern . '$/', $data);
+        return (bool)\preg_match('/^' . $pattern . '$/', (string)$data);
     }
 
     protected function alphaNumeric($data): bool
     {
         $pattern = '(?:([+|\-]*[0-9]+([.]+[0-9]+)*)|([0-9a-zA-ZğĞŞşÜüİıÖöÇç]))+';
-        return (bool)\preg_match('/^' . $pattern . '$/', $data);
+        return (bool)\preg_match('/^' . $pattern . '$/', (string)$data);
     }
 
     protected function boolean($data): bool
     {
-        return (bool)\preg_match('/^(true|false|0|1)]+$/', $data);
+        return (bool)\preg_match('/^(true|false|0|1)]+$/', (string)$data);
     }
 
     protected function mail($data): bool
@@ -120,7 +120,7 @@ trait ValidationRulesTrait
 
     protected function regex($data, $pattern): bool
     {
-        return (bool)\preg_match($pattern, $data);
+        return (bool)\preg_match($pattern, (string)$data);
     }
 
     protected function ip($data): bool
@@ -161,7 +161,7 @@ trait ValidationRulesTrait
     protected function only($data, ...$only): bool
     {
         foreach ($only as $row) {
-            if($row === $data){
+            if($row == $data){
                 return true;
             }
         }
