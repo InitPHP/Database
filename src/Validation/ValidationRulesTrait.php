@@ -37,6 +37,7 @@ trait ValidationRulesTrait
         $query->where($column, $data, '=');
         $dataMapper = $this->db->getDataMapper();
         $mapper = clone $dataMapper;
+        $mapper->getParameters(); // Prev parameters reset.
         $mapper->persist($query->readQuery(), []);
         return $mapper->numRows() < 1;
     }
