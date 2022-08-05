@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.7
+ * @version    1.1.8
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -29,7 +29,7 @@ class Validation
         'alpha', 'alphaNumeric', 'boolean', 'mail', 'url',
         'min', 'max', 'length', 'range', 'regex',
         'ip', 'ipv4', 'ipv6', 'equal', 'startWith', 'endWith',
-        'strContains', 'only'
+        'strContains', 'only',
     ];
 
     protected const DEFAULT_MESSAGES = [
@@ -116,6 +116,12 @@ class Validation
             if($this->is_unique($data, $column, $schemaID) === FALSE){
                 $this->error = $this->get_message($column, 'is_unique');
                 return false;
+            }
+            unset($methods[$key]);
+        }
+        if(($key = \array_search('optional', $methods, true)) !== FALSE){
+            if($data === null){
+                return true;
             }
             unset($methods[$key]);
         }

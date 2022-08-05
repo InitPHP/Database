@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.7
+ * @version    1.1.8
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -43,12 +43,15 @@ trait ValidationRulesTrait
 
     protected function required($data): bool
     {
-        return !empty(\trim($data));
+        if(!\is_iterable($data) && !\is_object($data)){
+            $data = \trim((string)$data);
+        }
+        return !empty($data);
     }
 
     protected function string($data): bool
     {
-        return (bool)\preg_match('/[\S]+/', (string)$data);
+        return \is_string($data);
     }
 
     protected function int($data): bool
