@@ -4,8 +4,6 @@ Manage your database with or without abstraction. This library is built on the P
 
 [![Latest Stable Version](http://poser.pugx.org/initphp/database/v)](https://packagist.org/packages/initphp/database) [![Total Downloads](http://poser.pugx.org/initphp/database/downloads)](https://packagist.org/packages/initphp/database) [![Latest Unstable Version](http://poser.pugx.org/initphp/database/v/unstable)](https://packagist.org/packages/initphp/database) [![License](http://poser.pugx.org/initphp/database/license)](https://packagist.org/packages/initphp/database) [![PHP Version Require](http://poser.pugx.org/initphp/database/require/php)](https://packagist.org/packages/initphp/database)
 
-PHP has powerful database abstraction libraries like Doctrine and Laravel Eloquent which are pretty nice. However, these are too extensive and cumbersome for projects that only need to easily create and execute database queries. If you don't always need migrations and seeding, this library will do the trick.
-
 ## Requirements
 
 - PHP 7.4 and later.
@@ -125,10 +123,10 @@ $db->select('user.name as author_name', 'post.id', 'post.title')
 * ORDER BY post ASC, post.created_at DESC
 * LIMIT 20, 10
 */
-$db->get(); // Install the SQL statement, execute, and reset the Query Builder.
-if ($db->numRows() > 0) {
-    foreach ($db->rows() as $row) {
-        echo $row->title . ' by ' . $row->author_name . '<br />';
+$res = $db->read();
+if($db->numRows() > 0){
+    foreach ($res as $row) {
+        echo $row['title'] . ' by ' . $row['author_name'] . '<br />';
     }
 }
 ```
@@ -188,9 +186,7 @@ The most basic example of a model class would look like this.
 ```php
 namespace App\Model;
 
-use \InitPHP\Database\Model;
-
-class Posts extends Model
+class Posts extends \InitPHP\Database\Model
 {
 
     /**
@@ -209,7 +205,7 @@ class Posts extends Model
     /**
      * If not specified, \InitPHP\Database\Entity::class is used by default.
      * 
-     * @var EntityInterface|string
+     * @var \InitPHP\Database\Entity|string
      */
     protected $entity = \App\Entities\PostEntity::class;
 
@@ -311,8 +307,8 @@ class Posts extends Model
     protected bool $updatable = true;
 
     protected array $validation = [
-        'id'    => 'is_unique|int', // Validation methods can be string separated by a perpendicular line.
-        'title' => ['required', 'string'], // Validation methods can be given as an array.
+        'id'    => ['is_unique', 'int'],
+        'title' => ['required', 'string', 'length(0,255)'],
     ];
 
     protected array $validationMsg = [
@@ -337,9 +333,7 @@ The most basic example of a entity class would look like this.
 ```php
 namespace App\Entities;
 
-use \InitPHP\Database\Entity;
-
-class PostEntity extends Entity 
+class PostEntity extends \InitPHP\Database\Entity 
 {
     /**
      * An example of a getter method for the "post_title" column.
