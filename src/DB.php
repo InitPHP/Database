@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.9
+ * @version    1.1.10
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -100,23 +100,21 @@ class DB
         if(Helper::str_starts_with($name, 'findBy')){
             $attrCamelCase = \substr($name, 6);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
-
-            $this->getQueryBuilder()->where($attributeName, ':' . $attributeName);
+            $this->getQueryBuilder()->where($attributeName, $arguments[0]);
             $query = $this->getQueryBuilder()->readQuery();
             $this->getQueryBuilder()->reset();
-            $this->getDataMapper()->setParameter(':'. $attributeName, $arguments[0]);
             $this->getDataMapper()->persist($query, []);
-            return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
+            $res = $this->getDataMapper()->results();
+            return $res === null ? [] : $res;
         }
         if(Helper::str_starts_with($name, 'findOneBy')){
             $attrCamelCase = \substr($name, 9);
             $attributeName = Helper::attributeNameCamelCaseDecode($attrCamelCase);
-            $this->getDataMapper()->setParameter(':' . $attributeName, $arguments[0]);
-            $this->getQueryBuilder()->where($attributeName, ':' . $attributeName);
+            $this->getQueryBuilder()->where($attributeName, $arguments[0]);
             $query = $this->getQueryBuilder()->readQuery();
             $this->getQueryBuilder()->reset();
             $this->getDataMapper()->persist($query, []);
-            return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
+            return $this->getDataMapper()->result();;
         }
         if(\method_exists($this->_queryBuilder, $name)){
             $res = $this->getQueryBuilder()->{$name}(...$arguments);
@@ -294,7 +292,8 @@ class DB
     public function read(array $selector = [], array $conditions = [], array $parameters = []): array
     {
         $this->readQueryHandler($selector, $conditions, $parameters);
-        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->results() : [];
+        $res = $this->getDataMapper()->results();
+        return $res === null ? [] : $res;
     }
 
     /**
@@ -307,7 +306,7 @@ class DB
     {
         $this->getQueryBuilder()->limit(1);
         $this->readQueryHandler($selector, $conditions, $parameters);
-        return $this->getDataMapper()->numRows() > 0 ? $this->getDataMapper()->result() : null;
+        return $this->getDataMapper()->result();
     }
 
     /**
@@ -319,8 +318,7 @@ class DB
         $schemaID = null;
         if(!empty($this->getSchemaID()) && isset($fields[$this->getSchemaID()])){
             $schemaID = $fields[$this->getSchemaID()];
-            $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $this->getSchemaID());
-            $this->getDataMapper()->setParameter(':' . $this->getSchemaID(), $schemaID);
+            $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $schemaID);
             unset($fields[$this->getSchemaID()]);
         }
         if(empty($fields)){
@@ -333,12 +331,10 @@ class DB
                 $this->errors[] = $this->getValidation()->getError();
                 return false;
             }
-            $data[$column] = ':' . $column;
-            $this->getDataMapper()->setParameter(':' . $column, $value);
+            $data[$column] = $value;
         }
         if(!empty($this->configurations['updatedField'])){
-            $data[$this->configurations['updatedField']] = ':' . $this->configurations['updatedField'];
-            $this->getDataMapper()->setParameter(':' . $this->configurations['updatedField'], \date($this->configurations['timestampFormat']));
+            $data[$this->configurations['updatedField']] = \date($this->configurations['timestampFormat']);
         }
         $query = $this->getQueryBuilder()->updateQuery($data);
         $this->getQueryBuilder()->reset();
@@ -354,8 +350,7 @@ class DB
     public function delete(array $conditions = [])
     {
         foreach ($conditions as $column => $value) {
-            $this->getQueryBuilder()->where($column, ':'.$column);
-            $this->getDataMapper()->setParameter(':'.$column, $value);
+            $this->getQueryBuilder()->where($column, $value);
         }
         if(!empty($this->configurations['deletedField'])){
             if($this->isOnlyDeletes !== FALSE){
@@ -364,9 +359,8 @@ class DB
                 $this->isOnlyDeletes = false;
             }else{
                 $this->getQueryBuilder()->is($this->configurations['deletedField'], null);
-                $this->getDataMapper()->setParameter(':' . $this->configurations['deletedField'], \date($this->configurations['timestampFormat']));
                 $query = $this->getQueryBuilder()->updateQuery([
-                    $this->configurations['deletedField'] => ':' . $this->configurations['deletedField'],
+                    $this->configurations['deletedField'] => \date($this->configurations['timestampFormat']),
                 ]);
             }
         }else{
@@ -402,7 +396,7 @@ class DB
         if($builder_reset !== FALSE){
             $this->getQueryBuilder()->reset();
         }
-        $parameters = $this->getDataMapper()->getParameters();
+        $parameters = $this->getDataMapper()->getParameters(false);
         $this->getDataMapper()->persist($query, []);
         if($builder_reset === FALSE && !empty($parameters)){
             $this->getDataMapper()->setParameters($parameters);
@@ -478,8 +472,7 @@ class DB
         }
         if(!empty($conditions)){
             foreach ($conditions as $column => $value) {
-                $this->getQueryBuilder()->where($column, ':'.$column);
-                $this->getDataMapper()->setParameter(':' . $column, $value);
+                $this->getQueryBuilder()->where($column, $value);
             }
         }
         $this->deletedFieldBuild();
