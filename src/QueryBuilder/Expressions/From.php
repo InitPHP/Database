@@ -52,7 +52,9 @@ trait From
     protected function fromQuery(): string
     {
         if(($schema = $this->db->getSchema()) !== null){
-            \array_unshift($this->tables, $schema);
+            if(!\in_array($schema, $this->tables, true)){
+                \array_unshift($this->tables, $schema);
+            }
         }
         return ' FROM ' . \implode(', ', $this->tables);
     }

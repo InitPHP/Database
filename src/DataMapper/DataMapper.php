@@ -92,6 +92,9 @@ class DataMapper implements DataMapperInterface
      */
     public function addParameter(string $key, $value): string
     {
+        if($value === null){
+            return 'NULL';
+        }
         $originKey = ':' . \ltrim(\str_replace('.', '', $key), ':');
         $i = 0;
 
