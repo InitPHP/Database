@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -185,7 +185,7 @@ trait Select
             $this->selectorsPush($split[0], $split[1], $fn, $pattern);
             return;
         }
-        if(((bool)\preg_match('/([\w\_]+)\((.+)\)$/iu', $column, $matches)) !== FALSE){
+        if(((bool)\preg_match('/([\w_]+)\((.+)\)$/iu', $column, $matches)) !== FALSE){
             $this->selectorsPush($matches[2], $alias, $matches[1], $pattern);
             return;
         }

@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -15,7 +15,6 @@ declare(strict_types=1);
 
 namespace InitPHP\Database\QueryBuilder\Expressions;
 
-use InitPHP\Database\Exceptions\QueryBuilderException;
 use InitPHP\Database\Helper;
 
 trait From
@@ -46,12 +45,13 @@ trait From
         if(empty($this->tables)){
             return null;
         }
-        return \end($this->tables);
+        \end($this->tables);
+        return \current($this->tables);
     }
 
     protected function fromQuery(): string
     {
-        if(($schema = $this->getSchema()) !== null){
+        if(($schema = $this->db->getSchema()) !== null){
             \array_unshift($this->tables, $schema);
         }
         return ' FROM ' . \implode(', ', $this->tables);
@@ -79,7 +79,7 @@ trait From
 
     protected function hasFrom(string $table): bool
     {
-        return \in_array($table, $this->tables, true) || $this->getSchema() == $table;
+        return \in_array($table, $this->tables, true) || $this->db->getSchema() == $table;
     }
 
     protected function fromReset()

@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -88,11 +88,9 @@ class DB
         if(isset($this->configurations['fetch'])){
             $dataMapperOptions['fetch'] = $this->configurations['fetch'];
         }
-        $this->_dataMapper = new DataMapper($this->_connection, $dataMapperOptions);
-        $this->_queryBuilder = new QueryBuilder([
-            'allowedFields'     => ($this->configurations['allowedFields'] ?? null),
-            'schema'            => ($this->configurations['tableSchema'] ?? null),
-            'schemaID'          => ($this->configurations['tableSchemaID'] ?? null),
+        $this->_dataMapper = new DataMapper($this, $dataMapperOptions);
+        $this->_queryBuilder = new QueryBuilder($this, [
+            'allowedFields'     => ($this->configurations['allowedFields'] ?? null)
         ]);
         $this->_validation = new Validation($this->configurations['validation']['methods'], $this->configurations['validation']['messages'], $this->configurations['validation']['labels'], $this);
     }
@@ -140,11 +138,9 @@ class DB
         throw new DatabaseException('The "' . $name . '" method does not exist.');
     }
 
-    public function setSchemaID(?string $schemaID): self
+    public function with(): self
     {
-        $this->configurations['tableSchemaID'] = $schemaID;
-        $this->getQueryBuilder()->setSchemaID($schemaID);
-        return $this;
+        return clone $this;
     }
 
     /**
@@ -155,12 +151,42 @@ class DB
         return $this->configurations['tableSchema'];
     }
 
+    public function setSchema(string $schema): self
+    {
+        if($schema === ''){
+            $this->configurations['tableSchema'] = null;
+        }else{
+            $this->configurations['tableSchema'] = $schema;
+        }
+        return $this;
+    }
+
+    public function withSchema(string $schema): self
+    {
+        return $this->with()->setSchema($schema);
+    }
+
     /**
      * @return string|null
      */
     public function getSchemaID()
     {
         return $this->configurations['tableSchemaID'];
+    }
+
+    public function setSchemaID(string $schemaID): self
+    {
+        if($schemaID === ''){
+            $this->configurations['tableSchemaID'] = null;
+        }else{
+            $this->configurations['tableSchemaID'] = $schemaID;
+        }
+        return $this;
+    }
+
+    public function withSchemaID(string $schemaID): self
+    {
+        return $this->with()->setSchemaID($schemaID);
     }
 
     public function isError(): bool
@@ -211,8 +237,11 @@ class DB
      */
     public function create(array $fields)
     {
-        $data = []; $parameters = [];
+        $data = [];
         $isCreatedField = !empty($this->configurations['createdField']);
+        if($isCreatedField){
+            $createdFieldParameterName = $this->getDataMapper()->addParameter($this->configurations['createdField'], \date($this->configurations['timestampFormat']));
+        }
         if(\count($fields) === \count($fields, \COUNT_RECURSIVE)){
             $this->getValidation()->setData($fields);
             foreach ($fields as $column => $value) {
@@ -220,14 +249,13 @@ class DB
                     $this->errors[] = $this->getValidation()->getError();
                     return false;
                 }
-                $data[$column] = ':'.$column;
-                $parameters[':' . $column] = $value;
+                $data[$column] = $value;
             }
             if(empty($data)){
                 return false;
             }
             if($isCreatedField){
-                $data[$this->configurations['createdField']] = ':' . $this->configurations['createdField'];
+                $data[$this->configurations['createdField']] = $createdFieldParameterName;
             }
         }else{
             $i = 0;
@@ -239,24 +267,19 @@ class DB
                         $this->errors[] = $this->getValidation()->getError();
                         return false;
                     }
-                    $data[$i][$column] = ':' . $column . '_' . $i;
-                    $parameters[':' . $column . '_' . $i] = $value;
+                    $data[$i][$column] = $value;
                 }
                 if(empty($data)){
                     continue;
                 }
                 if($isCreatedField){
-                    $data[$i][$this->configurations['createdField']] = ':' . $this->configurations['createdField'];
+                    $data[$i][$this->configurations['createdField']] = $createdFieldParameterName;
                 }
                 ++$i;
             }
         }
-        if($isCreatedField){
-            $parameters[':' . $this->configurations['createdField']] = \date($this->configurations['timestampFormat']);
-        }
-        $this->getDataMapper()->setParameters($parameters);
-        unset($parameters);
         $query = $this->getQueryBuilder()->insertQuery($data);
+        $this->getQueryBuilder()->reset();
         $this->getDataMapper()->persist($query, []);
         return $this->getDataMapper()->numRows() > 0;
     }

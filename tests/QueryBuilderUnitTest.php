@@ -3,17 +3,19 @@ declare(strict_types=1);
 
 namespace Test\InitPHP\Database;
 
-use InitPHP\Database\QueryBuilder\QueryBuilder;
-use InitPHP\Database\QueryBuilder\QueryBuilderInterface;
+use InitPHP\Database\DB;
+use \InitPHP\Database\QueryBuilder\{QueryBuilder, QueryBuilderInterface};
 
 class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 {
 
+    private DB $db;
     protected QueryBuilderInterface $qb;
 
     protected function setUp(): void
     {
-        $this->qb = new QueryBuilder();
+        $this->db = new DB([]);
+        $this->qb = new QueryBuilder($this->db);
         parent::setUp();
     }
 
@@ -205,7 +207,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             'status'    => true,
         ];
 
-        $expected = 'INSERT INTO post (title, content, author, status) VALUES ("Post Title", "Post Content", 5, 1);';
+        $expected = 'INSERT INTO post (title, content, author, status) VALUES (:title, :content, :author, :status);';
         $this->assertEquals($expected, $this->qb->insertQuery($data));
         $this->qb->reset();
     }
@@ -228,7 +230,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ]
         ];
 
-        $expected = 'INSERT INTO post (title, content, author, status) VALUES ("Post Title #1", "Post Content #1", 5, 1), ("Post Title #2", "Post Content #2", NULL, 0);';
+        $expected = 'INSERT INTO post (title, content, author, status) VALUES (:title, :content, :author, :status), (:title_1, :content_1, NULL, :status_1);';
         $this->assertEquals($expected, $this->qb->insertQuery($data));
         $this->qb->reset();
     }
@@ -244,7 +246,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             'status'    => false,
         ];
 
-        $expected = 'UPDATE post SET title = "New Title", status = 0 WHERE status = 1 LIMIT 5';
+        $expected = 'UPDATE post SET title = :title, status = :status_1 WHERE status = :status LIMIT 5';
 
         $this->assertEquals($expected, $this->qb->updateQuery($data));
         $this->qb->reset();
@@ -256,7 +258,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->where('authorId', 5)
             ->limit(100);
 
-        $expected = 'DELETE FROM post WHERE authorId = 5 LIMIT 100';
+        $expected = 'DELETE FROM post WHERE authorId = :authorId LIMIT 100';
 
         $this->assertEquals($expected, $this->qb->deleteQuery());
         $this->qb->reset();
@@ -267,7 +269,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->from('post')
             ->andBetween('date', ['2022-05-07', 'CURDATE()']);
 
-        $expected = 'SELECT * FROM post WHERE date BETWEEN "2022-05-07" AND CURDATE()';
+        $expected = 'SELECT * FROM post WHERE date BETWEEN :date_start AND CURDATE()';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -278,7 +280,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->qb->from('post')
             ->regexp('title', '^M[a-z]K$');
 
-        $expected = 'SELECT * FROM post WHERE title REGEXP "^M[a-z]K$"';
+        $expected = 'SELECT * FROM post WHERE title REGEXP :title';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -293,10 +295,11 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->leftJoin('stat', 'stat.id=post.id')
             ->where('post.id', 5);
 
-        $expected = 'SELECT post.title, COALESCE(stat.view, 0) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = 5';
+        $expected = 'SELECT post.title, COALESCE(stat.view, 0) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = :postid';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
+        $this->db->getDataMapper()->getParameters();
 
         $this->qb->select('post.title')
             ->selectCoalesce('stat.view as view', 'post.view')
@@ -304,7 +307,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->leftJoin('stat', 'stat.id=post.id')
             ->where('post.id', 5);
 
-        $expected = 'SELECT post.title, COALESCE(stat.view, post.view) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = 5';
+        $expected = 'SELECT post.title, COALESCE(stat.view, post.view) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = :postid';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
@@ -320,10 +323,11 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->leftJoin('stat as s', 's.id=p.id')
             ->where('p.id', 5);
 
-        $expected = 'SELECT p.title, s.view AS s_view FROM post AS p LEFT JOIN stat AS s ON s.id=p.id WHERE p.id = 5';
+        $expected = 'SELECT p.title, s.view AS s_view FROM post AS p LEFT JOIN stat AS s ON s.id=p.id WHERE p.id = :pid';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();
+        $this->db->getDataMapper()->getParameters(); // parameter reset
 
         $this->qb->select('p.title')
             ->select('s.view as s_view')
@@ -331,7 +335,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->leftJoin('stat s', 's.id=p.id')
             ->where('p.id', 5);
 
-        $expected = 'SELECT p.title, s.view AS s_view FROM post AS p LEFT JOIN stat AS s ON s.id=p.id WHERE p.id = 5';
+        $expected = 'SELECT p.title, s.view AS s_view FROM post AS p LEFT JOIN stat AS s ON s.id=p.id WHERE p.id = :pid';
 
         $this->assertEquals($expected, $this->qb->readQuery());
         $this->qb->reset();

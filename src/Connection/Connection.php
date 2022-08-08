@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -24,6 +24,12 @@ class Connection implements ConnectionInterface
     private ?PDO $pdo;
 
     private static ?PDO $global = null;
+
+    private array $transaction = [
+        'enable'        => false,
+        'testMode'      => false,
+        'status'        => false,
+    ];
 
     private array $credentials = [
         'dsn'       => '',
@@ -91,6 +97,62 @@ class Connection implements ConnectionInterface
         $this->pdo = null;
         unset($this->pdo);
         self::$global = null;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function beginTransaction(bool $testMode = false): bool
+    {
+        $this->transaction = [
+            'enable'        => true,
+            'testMode'      => $testMode,
+            'status'        => true,
+        ];
+        return $this->getPDO()->beginTransaction();
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function completeTransaction(): bool
+    {
+
+        if($this->transaction['status'] !== FALSE && $this->transaction['testMode'] === FALSE){
+            $res = $this->getPDO()->commit();
+        }else{
+            $res = $this->getPDO()->rollBack();
+        }
+        $this->transaction = [
+            'enable'        => false,
+            'testMode'      => false,
+            'status'        => false,
+        ];
+        return (bool)$res;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function statusTransaction(): bool
+    {
+        return $this->transaction['status'];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function isTransaction(): bool
+    {
+        return $this->transaction['enable'];
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function failedTransaction(): void
+    {
+        $this->transaction['status'] = false;
     }
 
 }

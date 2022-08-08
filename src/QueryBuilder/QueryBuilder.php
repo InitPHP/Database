@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -16,18 +16,13 @@ declare(strict_types=1);
 namespace InitPHP\Database\QueryBuilder;
 
 use \InitPHP\Database\QueryBuilder\Expressions\{From, GroupBy, Join, Limit, Select, WhereAndHaving, OrderBy};
-use \InitPHP\Database\Exceptions\{QueryBuilderException, QueryBuilderInvalidArgumentException};
+use InitPHP\Database\DB;
 use InitPHP\Database\Helper;
 
 class QueryBuilder implements QueryBuilderInterface
 {
 
     use Select, From, Join, WhereAndHaving, OrderBy, Limit, GroupBy;
-
-    protected const DEFAULT_EXPRESSIONS = [
-        'fields'        => [],
-        'primary_key'   => '',
-    ];
 
     protected const SUPPORTED_JOIN_TYPES = [
         'INNER', 'LEFT', 'RIGHT', 'LEFT OUTER', 'RIGHT OUTER', 'SELF', 'NATURAL'
@@ -36,38 +31,22 @@ class QueryBuilder implements QueryBuilderInterface
     /** @var string */
     private string $sqlQuery = '';
 
-    private string $schema;
-
-    private string $schemaID;
+    protected DB $db;
 
     /** @var null|string[] */
     private ?array $allowedFields = null;
 
-    public function __construct(array $options = [])
+    public function __construct(DB &$db, array $options = [])
     {
         if(isset($options['allowedFields']) && \is_array($options['allowedFields']) && !empty($options['allowedFields'])){
             $this->allowedFields = $options['allowedFields'];
         }
-        if(isset($options['schema']) && \is_string($options['schema']) && !empty($options['schema'])){
-            $this->schema = $options['schema'];
-        }
-        if(isset($options['schemaID']) && \is_string($options['schemaID']) && !empty($options['schemaID'])){
-            $this->schemaID = $options['schemaID'];
-        }
+        $this->db = &$db;
     }
 
     public function __destruct()
     {
         $this->reset();
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function setSchemaID(?string $schemaID): self
-    {
-        $this->schemaID = $schemaID;
-        return $this;
     }
 
     /**
@@ -80,7 +59,7 @@ class QueryBuilder implements QueryBuilderInterface
         }
 
         $this->sqlQuery = 'INSERT INTO'
-            . ' ' . ($this->endTableSchema() ?? $this->getSchema()) . ' ';
+            . ' ' . ($this->endTableSchema() ?? $this->db->getSchema()) . ' ';
 
         $columns = [];
         $values = [];
@@ -92,7 +71,11 @@ class QueryBuilder implements QueryBuilderInterface
                     continue;
                 }
                 $columns[] = $column;
-                $values[] = Helper::queryBindParameter($value, '{value}');
+                if(Helper::isSQLParameterOrFunction($value)){
+                    $values[] = $value;
+                }else{
+                    $values[] = $this->db->getDataMapper()->addParameter($column, $value);
+                }
             }
             if(empty($columns)){
                 return '';
@@ -112,7 +95,11 @@ class QueryBuilder implements QueryBuilderInterface
                 if(\in_array($column, $columns, true) === FALSE){
                     $columns[] = $column;
                 }
-                $value[$column] = Helper::queryBindParameter($val, '{value}');
+                if(Helper::isSQLParameterOrFunction($val)){
+                    $value[$column] = $val;
+                }else{
+                    $value[$column] = $this->db->getDataMapper()->addParameter($column, $val);
+                }
             }
             $values[] = $value;
         }
@@ -153,7 +140,7 @@ class QueryBuilder implements QueryBuilderInterface
     public function deleteQuery(): string
     {
         $this->sqlQuery = 'DELETE FROM'
-            . ' ' . ($this->endTableSchema() ?? $this->getSchema())
+            . ' ' . ($this->endTableSchema() ?? $this->db->getSchema())
             . $this->whereQuery()
             . $this->limitQuery();
         return \trim($this->sqlQuery);
@@ -169,23 +156,27 @@ class QueryBuilder implements QueryBuilderInterface
         }
         $update = [];
         foreach ($data as $column => $value) {
-            if($this->getSchemaID() == $column){
+            if($this->db->getSchemaID() == $column){
                 continue;
             }
             if(!$this->isAllowedField($column)){
                 continue;
             }
-            $update[] = $column . ' = ' . Helper::queryBindParameter($value, '{value}');
+            if(Helper::isSQLParameterOrFunction($value)){
+                $update[] = $column . ' = ' . $value;
+            }else{
+                $update[] = $column . ' = ' . $this->db->getDataMapper()->addParameter($column, $value);
+            }
         }
         if(empty($update)){
             return '';
         }
-        $schemaID = $this->getSchemaID();
+        $schemaID = $this->db->getSchemaID();
         if($schemaID !== null && isset($data[$schemaID])){
             $this->where($schemaID, $data[$schemaID]);
         }
         $this->sqlQuery = 'UPDATE '
-            . ($this->endTableSchema() ?? $this->getSchema())
+            . ($this->endTableSchema() ?? $this->db->getSchema())
             . ' SET '
             . \implode(', ', $update)
             . $this->whereQuery()
@@ -207,16 +198,6 @@ class QueryBuilder implements QueryBuilderInterface
         $this->limitReset();
         $this->groupByReset();
         return $this;
-    }
-
-    protected function getSchema(): ?string
-    {
-        return $this->schema ?? null;
-    }
-
-    protected function getSchemaID(): ?string
-    {
-        return  $this->schemaID ?? null;
     }
 
     protected function isAllowedField(string $field): bool

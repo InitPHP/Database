@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -41,20 +41,11 @@ interface DataMapperInterface
     public function setParameters(array $parameters): self;
 
     /**
-     * @param bool $testMode
-     * @return $this
+     * @param string $key
+     * @param $value
+     * @return string
      */
-    public function transactionStart(bool $testMode = false): self;
-
-    /**
-     * @return bool
-     */
-    public function transactionStatus(): bool;
-
-    /**
-     * @return $this
-     */
-    public function transactionComplete(): self;
+    public function addParameter(string $key, $value): string;
 
     /**
      * @param string $sqlQuery
@@ -127,9 +118,9 @@ interface DataMapperInterface
     public function result();
 
     /**
-     * @return \InitPHP\Database\Entity[]|string[]|object[]|array
+     * @return \InitPHP\Database\Entity[]|string[]|object[]|array|null
      */
-    public function results(): array;
+    public function results(): ?array;
 
     /**
      * @return int|null

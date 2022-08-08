@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -15,7 +15,6 @@ declare(strict_types=1);
 
 namespace InitPHP\Database\DataMapper;
 
-use InitPHP\Database\Connection\ConnectionInterface;
 use InitPHP\Database\DB;
 use \InitPHP\Database\Exceptions\{DataMapperException, DataMapperInvalidArgumentException};
 
@@ -29,7 +28,7 @@ class DataMapper implements DataMapperInterface
         DB::FETCH_BOTH, DB::FETCH_ENTITY, DB::FETCH_OBJ, DB::FETCH_LAZY, DB::FETCH_ASSOC
     ];
 
-    private ConnectionInterface $db;
+    private DB $db;
 
     private array $parameters = [];
 
@@ -44,18 +43,12 @@ class DataMapper implements DataMapperInterface
         'as_entity' => null,
     ];
 
-    private array $transaction = [
-        'enable'        => false,
-        'status'        => false,
-        'testMode'      => false,
-    ];
-
-    public function __construct(ConnectionInterface $connection, ?array $options = [])
+    public function __construct(DB &$db, ?array $options = [])
     {
         if(!empty($options)){
             $this->options = \array_merge($this->options, $options);
         }
-        $this->db = $connection;
+        $this->db = &$db;
     }
 
     public function __call($name, $arguments)
@@ -74,7 +67,7 @@ class DataMapper implements DataMapperInterface
      */
     public function setParameter(string $key, $value): self
     {
-        $key = ':' . \ltrim($key, ':');
+        $key = ':' . \ltrim(\str_replace('.', '', $key), ':');
         $this->parameters[$key] = $value;
         return $this;
     }
@@ -88,10 +81,28 @@ class DataMapper implements DataMapperInterface
             return $this;
         }
         foreach ($parameters as $key => $value) {
-            $key = ':' . \ltrim($key, ':');
+            $key = ':' . \ltrim(\str_replace('.', '', $key), ':');
             $this->parameters[$key] = $value;
         }
         return $this;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function addParameter(string $key, $value): string
+    {
+        $originKey = ':' . \ltrim(\str_replace('.', '', $key), ':');
+        $i = 0;
+
+        do {
+            $key = $i === 0 ? $originKey : $originKey . '_' . $i;
+            ++$i;
+            $hasParameter = isset($this->parameters[$key]);
+        }while($hasParameter);
+
+        $this->parameters[$key] = $value;
+        return $key;
     }
 
     /**
@@ -109,40 +120,6 @@ class DataMapper implements DataMapperInterface
     /**
      * @inheritDoc
      */
-    public function transactionStart(bool $testMode = false): self
-    {
-        $this->transaction['status'] = true;
-        $this->transaction['testMode'] = $testMode;
-        $this->transaction['enable'] = true;
-        $this->db->getPDO()->beginTransaction();
-        return $this;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function transactionStatus(): bool
-    {
-        return $this->transaction['status'];
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function transactionComplete(): self
-    {
-        $this->transaction['enable'] = false;
-        if($this->transaction['testMode'] === FALSE && $this->transaction['status'] !== FALSE){
-            $this->db->getPDO()->commit();
-        }else{
-            $this->db->getPDO()->rollBack();
-        }
-        return $this;
-    }
-
-    /**
-     * @inheritDoc
-     */
     public function prepare(string $sqlQuery): self
     {
         if($sqlQuery == ''){
@@ -151,10 +128,10 @@ class DataMapper implements DataMapperInterface
         $this->last_sql = $sqlQuery;
         try {
             if(($this->statement = $this->db->getPDO()->prepare($sqlQuery)) === FALSE){
-                $this->transactionFailed();
+                $this->db->getConnection()->failedTransaction();
             }
         }catch (\PDOException $e) {
-            $this->transactionFailed();
+            $this->db->getConnection()->failedTransaction();
             throw new DataMapperException($e->getMessage(), (int)$e->getCode());
         }
 
@@ -281,14 +258,14 @@ class DataMapper implements DataMapperInterface
         }
         try {
             $parameters = $this->getParameters();
-            if(empty($parameters)){
-                $parameters = null;
+            if(!empty($parameters)){
+                $this->bindParameters($parameters);
             }
-            if(($res = $this->statement->execute($parameters)) === FALSE){
-                $this->transactionFailed();
+            if(($res = $this->statement->execute()) === FALSE){
+                $this->db->getConnection()->failedTransaction();
             }
         }catch (\PDOException $e) {
-            $this->transactionFailed();
+            $this->db->getConnection()->failedTransaction();
         }
         return $res ?? false;
     }
@@ -303,19 +280,19 @@ class DataMapper implements DataMapperInterface
             return null;
         }
         $this->fetchModePrepare();
-        return $this->statement->fetch();
+        return $this->numRows() > 0 ? $this->statement->fetch() : null;
     }
 
     /**
      * @inheritDoc
      */
-    public function results(): array
+    public function results(): ?array
     {
         if(!isset($this->statement)){
             return [];
         }
         $this->fetchModePrepare();
-        return $this->statement->fetchAll();
+        return $this->numRows() > 0 ? $this->statement->fetchAll() : null;
     }
 
     /**
@@ -420,16 +397,6 @@ class DataMapper implements DataMapperInterface
         }
         if($fetch !== DB::FETCH_BOTH){
             $this->statement->setFetchMode($fetch);
-        }
-    }
-
-    private function transactionFailed()
-    {
-        if($this->transaction['enable'] === FALSE){
-            return;
-        }
-        if($this->transaction['status'] !== FALSE){
-            $this->transaction['status'] = false;
         }
     }
 

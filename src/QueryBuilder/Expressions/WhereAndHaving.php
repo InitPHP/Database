@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -522,42 +522,89 @@ trait WhereAndHaving
     {
         $mark = \trim($mark);
         if(\in_array($mark, ['=', '!=', '>=', '<=', '<', '>'], true)){
-            return $column . ' ' . $mark . ' ' . Helper::queryBindParameter($value);
+            if(Helper::isSQLParameterOrFunction($value)){
+                return $column . ' ' . $mark . ' ' . Helper::queryBindParameter($value);
+            }
+            return $column . ' ' . $mark . ' ' . $this->db->getDataMapper()->addParameter($column, $value);
         }
         $markUpperCase = \strtoupper($mark);
-        switch (\str_replace([' ', '_'], '', $markUpperCase)) {
+        $searchMark = \str_replace([' ', '_'], '', $markUpperCase);
+        switch ($searchMark) {
             case 'IS':
-                return $column . ' IS ' . Helper::queryBindParameter($value, '{value}');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, $value);
+                }
+                return $column . ' IS ' . $value;
             case 'ISNOT':
-                return $column . ' IS NOT ' . Helper::queryBindParameter($value, '{value}');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, $value);
+                }
+                return $column . ' IS NOT ' . $value;
             case 'LIKE':
-                return $column . ' LIKE ' . Helper::queryBindParameter($value, '%{value}%');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, '%' . $value . '%');
+                }
+                return $column . ' LIKE ' . $value;
             case 'STARTLIKE':
-                return $column . ' LIKE ' . Helper::queryBindParameter($value, '%{value}');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, '%' . $value);
+                }
+                return $column . ' LIKE ' . $value;
             case 'ENDLIKE':
-                return $column . ' LIKE ' . Helper::queryBindParameter($value, '{value}%');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, $value . '%');
+                }
+                return $column . ' LIKE ' . $value;
             case 'NOTLIKE':
-                return $column . ' NOT LIKE ' . Helper::queryBindParameter($value, '%{value}%');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, '%' . $value . '%');
+                }
+                return $column . ' NOT LIKE ' . $value;
             case 'STARTNOTLIKE':
-                return $column . ' NOT LIKE ' . Helper::queryBindParameter($value, '%{value}');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, '%' . $value);
+                }
+                return $column . ' NOT LIKE ' . $value;
             case 'ENDNOTLIKE':
-                return $column . ' NOT LIKE ' . Helper::queryBindParameter($value, '{value}%');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, $value . '%');
+                }
+                return $column . ' NOT LIKE ' . $value;
             case 'REGEXP':
-                return $column . ' REGEXP ' . Helper::queryBindParameter($value, '{value}');
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, $value);
+                }
+                return $column . ' REGEXP ' . $value;
             case 'BETWEEN':
-                return $column . ' BETWEEN '
-                    . Helper::queryBindParameter($value[0], '{value}')
-                    . ' AND ' . Helper::queryBindParameter($value[1], '{value}');
             case 'NOTBETWEEN':
-                return $column . ' NOT BETWEEN '
-                    . Helper::queryBindParameter($value[0], '{value}')
-                    . ' AND ' . Helper::queryBindParameter($value[1], '{value}');
+                $start = $value[0] ?? 0;
+                $end = $value[1] ?? 0;
+                if(Helper::isSQLParameterOrFunction($start) === FALSE){
+                    $start = $this->db->getDataMapper()->addParameter($column . '_start', $start);
+                }
+                if(Helper::isSQLParameterOrFunction($end) === FALSE){
+                    $end = $this->db->getDataMapper()->addParameter($column . '_end', $end);
+                }
+
+                return $column . ' '
+                    . ($searchMark === 'NOTBETWEEN' ? 'NOT ':'')
+                    . 'BETWEEN ' . $start . ' AND ' . $end;
             case 'IN':
-                return $column . ' IN '
-                    . (\is_array($value) ? '(' . \implode(', ', $value) . ')' : Helper::queryBindParameter($value, '({value})'));
+                if(\is_array($value)){
+                    $value = \implode(', ', $value);
+                }
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, '(' . $value . ')');
+                }
+                return $column . ' IN ' . $value;
             case 'NOTIN':
-                return $column . ' NOT IN '
-                    . (\is_array($value) ? '(' . \implode(', ', $value) . ')' : Helper::queryBindParameter($value, '({value})'));
+                if(\is_array($value)){
+                    $value = \implode(', ', $value);
+                }
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, '(' . $value . ')');
+                }
+                return $column . ' NOT IN ' . $value;
             case 'FINDINSET':
                 return 'FIND_IN_SET('
                 . \is_array($value) ? "'" . \implode(', ', $value) . "'" : Helper::queryBindParameter($value, '{value}')
@@ -570,7 +617,7 @@ trait WhereAndHaving
                 return "SOUNDEX(" . $column . ") LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(" . Helper::queryBindParameter($value, '{value}') . ")), '%')";
         }
 
-        if(((bool)\preg_match('/([\w\_]+)\((.+)\)$/iu', $column, $matches)) !== FALSE){
+        if(((bool)\preg_match('/([\w_]+)\((.+)\)$/iu', $column, $matches)) !== FALSE){
             return \strtoupper($matches[1]) . '(' . $matches[2] . ')';
         }
 

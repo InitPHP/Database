@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -36,7 +36,7 @@ trait Join
         if(\is_array($table)){
             throw new QueryBuilderInvalidArgumentException('Join method cannot join more than one table at the same time.');
         }
-        if(isset($this->join[$table]) || $table == $this->getSchema() || $this->hasFrom($table)){
+        if(isset($this->join[$table]) || $table == $this->db->getSchema() || $this->hasFrom($table)){
             return $this;
         }
         if($type == 'NATURAL'){
@@ -44,7 +44,7 @@ trait Join
             return $this;
         }
         $onStmt = \str_replace(' = ', '=', $onStmt);
-        if((bool)\preg_match('/([\w\_\-]+)\.([\w\_\-]+)=([\w\_\-]+)\.([\w\_\-]+)/u', $onStmt, $matches) === FALSE){
+        if((bool)\preg_match('/([\w_\-]+)\.([\w_\-]+)=([\w_\-]+)\.([\w_\-]+)/u', $onStmt, $matches) === FALSE){
             throw new QueryBuilderInvalidArgumentException('Join syntax is not in the correct format. Example : "post.author=user.id". Give : "' . $onStmt . '"');
         }
         $onStmt = $matches[1] . '.' . $matches[2] . '=' . $matches[3] . '.' . $matches[4];

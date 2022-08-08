@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.8
+ * @version    1.1.9
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -38,5 +38,31 @@ interface ConnectionInterface
      * @return void
      */
     public function close(): void;
+
+    /**
+     * @param bool $testMode
+     * @return bool
+     */
+    public function beginTransaction(bool $testMode = false): bool;
+
+    /**
+     * @return bool
+     */
+    public function completeTransaction(): bool;
+
+    /**
+     * @return bool
+     */
+    public function statusTransaction(): bool;
+
+    /**
+     * @return bool
+     */
+    public function isTransaction(): bool;
+
+    /**
+     * @return void
+     */
+    public function failedTransaction(): void;
 
 }
