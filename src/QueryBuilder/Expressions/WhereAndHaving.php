@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.10
+ * @version    1.1.11
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -585,36 +585,57 @@ trait WhereAndHaving
                 if(Helper::isSQLParameterOrFunction($end) === FALSE){
                     $end = $this->db->getDataMapper()->addParameter($column . '_end', $end);
                 }
-
                 return $column . ' '
                     . ($searchMark === 'NOTBETWEEN' ? 'NOT ':'')
                     . 'BETWEEN ' . $start . ' AND ' . $end;
             case 'IN':
-                if(\is_array($value)){
-                    $value = \implode(', ', $value);
-                }
-                if(Helper::isSQLParameterOrFunction($value) === FALSE){
-                    $value = $this->db->getDataMapper()->addParameter($column, '(' . $value . ')');
-                }
-                return $column . ' IN ' . $value;
             case 'NOTIN':
                 if(\is_array($value)){
+                    $values = [];
+                    foreach ($value as $key => $val) {
+                        if(\is_numeric($val)){
+                            $values[] = $this->db->getDataMapper()->addParameter(($column . $key), $val);
+                            continue;
+                        }
+                        if(\is_string($val)){
+                            if(Helper::isSQLParameterOrFunction($val)){
+                                $values[] = $val;
+                            }else{
+                                $values[] = $this->db->getDataMapper()->addParameter(($column . $key), $val);
+                            }
+                            continue;
+                        }
+                        throw new QueryBuilderInvalidArgumentException('Only integers or a string of strings can be used for IN.');
+                    }
+                    $value = \implode(', ', $values);
+                }elseif(\is_string($value) || \is_numeric($value)) {
+                    if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                        $value = $this->db->getDataMapper()->addParameter($column, \trim($value, '()'));
+                    }
+                }else{
+                    throw new QueryBuilderInvalidArgumentException('Only integers or a string of strings can be used for IN.');
+                }
+                return $column
+                    . ($searchMark === 'NOTIN' ? ' NOT ' : ' ')
+                    . 'IN (' . $value . ')';
+            case 'FINDINSET':
+            case 'NOTFINDINSET':
+                if(is_array($value)){
                     $value = \implode(', ', $value);
                 }
                 if(Helper::isSQLParameterOrFunction($value) === FALSE){
-                    $value = $this->db->getDataMapper()->addParameter($column, '(' . $value . ')');
+                    $value = $this->db->getDataMapper()->addParameter($column, $value);
                 }
-                return $column . ' NOT IN ' . $value;
-            case 'FINDINSET':
-                return 'FIND_IN_SET('
-                . \is_array($value) ? "'" . \implode(', ', $value) . "'" : Helper::queryBindParameter($value, '{value}')
-                    . ', ' . $column . ')';
-            case 'NOTFINDINSET':
-                return 'NOT FIND_IN_SET('
-                . \is_array($value) ? "'" . \implode(', ', $value) . "'" : Helper::queryBindParameter($value, '{value}')
-                    . ', ' . $column . ')';
+                return ($searchMark === 'NOTFINDINSET' ? 'NOT ':'')
+                    . 'FIND_IN_SET(' . $value . ', ' . $column . ')';
             case 'SOUNDEX':
-                return "SOUNDEX(" . $column . ") LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(" . Helper::queryBindParameter($value, '{value}') . ")), '%')";
+                if(!\is_string($value)){
+                    throw new QueryBuilderInvalidArgumentException('Only a string value can be defined for Soundex.');
+                }
+                if(Helper::isSQLParameterOrFunction($value) === FALSE){
+                    $value = $this->db->getDataMapper()->addParameter($column, $value);
+                }
+                return "SOUNDEX(" . $column . ") LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(" . $value . ")), '%')";
         }
 
         if(((bool)\preg_match('/([\w_]+)\((.+)\)$/iu', $column, $matches)) !== FALSE){

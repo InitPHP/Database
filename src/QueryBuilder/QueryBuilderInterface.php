@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.10
+ * @version    1.1.11
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -470,7 +470,7 @@ interface QueryBuilderInterface
      * WHERE column IN (values[0], values[1], ...)
      *
      * @param string $column
-     * @param int[]|string[]|array $value
+     * @param int[]|string[]|array|string $value
      * @param string $logical
      * @return $this
      */
@@ -722,35 +722,35 @@ interface QueryBuilderInterface
      * WHERE SOUNDEX(column) LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(value)), '%')
      *
      * @param string $column
-     * @param $value
+     * @param string $value
      * @param string $logical
      * @return $this
      */
-    public function soundex(string $column, $value, string $logical = 'AND'): self;
+    public function soundex(string $column, string $value, string $logical = 'AND'): self;
 
     /**
      * WHERE SOUNDEX(column) LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(value)), '%')
      *
      * @param string $column
-     * @param $value
+     * @param string $value
      * @return $this
      */
-    public function orSoundex(string $column, $value): self;
+    public function orSoundex(string $column, string $value): self;
 
     /**
      * WHERE SOUNDEX(column) LIKE CONCAT('%', TRIM(TRAILING '0' FROM SOUNDEX(value)), '%')
      *
      * @param string $column
-     * @param $value
+     * @param string $value
      * @return $this
      */
-    public function andSoundex(string $column, $value): self;
+    public function andSoundex(string $column, string $value): self;
 
     /**
      * WHERE column IS value
      *
      * @param string $column
-     * @param $value
+     * @param null|string|int|float $value
      * @param string $logical
      * @return $this
      */
@@ -760,7 +760,7 @@ interface QueryBuilderInterface
      * WHERE column IS value
      *
      * @param string $column
-     * @param $value
+     * @param null|string|int|float $value
      * @return $this
      */
     public function orIs(string $column, $value = null): self;
@@ -769,7 +769,7 @@ interface QueryBuilderInterface
      * WHERE column IS value
      *
      * @param string $column
-     * @param $value
+     * @param null|string|int|float $value
      * @return $this
      */
     public function andIs(string $column, $value = null): self;
@@ -778,7 +778,7 @@ interface QueryBuilderInterface
      * WHERE column IS NOT value
      *
      * @param string $column
-     * @param $value
+     * @param null|string|int|float $value
      * @param string $logical
      * @return $this
      */
@@ -788,7 +788,7 @@ interface QueryBuilderInterface
      * WHERE column IS NOT value
      *
      * @param string $column
-     * @param $value
+     * @param null|string|int|float $value
      * @return $this
      */
     public function orIsNot(string $column, $value = null): self;
@@ -796,7 +796,7 @@ interface QueryBuilderInterface
     /**
      * WHERE column IS NOT value
      * @param string $column
-     * @param $value
+     * @param null|string|int|float $value
      * @return $this
      */
     public function andIsNot(string $column, $value = null): self;
