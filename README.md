@@ -20,6 +20,12 @@ Databases supported by PDO and suitable drivers are available at [https://www.ph
 composer require initphp/database
 ```
 
+or include the `src/init.php` file from this repo in your system.
+
+```php
+require_once "src/init.php";
+```
+
 ## Usage
 
 ### QueryBuilder and CRUD
