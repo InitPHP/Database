@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.11
+ * @version    1.1.12
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -114,7 +114,7 @@ class DB
             $query = $this->getQueryBuilder()->readQuery();
             $this->getQueryBuilder()->reset();
             $this->getDataMapper()->persist($query, []);
-            return $this->getDataMapper()->result();;
+            return $this->getDataMapper()->result();
         }
         if(\method_exists($this->_queryBuilder, $name)){
             $res = $this->getQueryBuilder()->{$name}(...$arguments);
@@ -138,7 +138,8 @@ class DB
 
     public function with(): self
     {
-        return clone $this;
+        $with = clone $this;
+        return $with;
     }
 
     /**
@@ -267,7 +268,7 @@ class DB
                     }
                     $data[$i][$column] = $value;
                 }
-                if(empty($data)){
+                if(empty($data[$i])){
                     continue;
                 }
                 if($isCreatedField){

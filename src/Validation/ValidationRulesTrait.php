@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.11
+ * @version    1.1.12
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -21,25 +21,25 @@ use InitPHP\Database\Helper;
 trait ValidationRulesTrait
 {
 
-    public function is_unique($data, $column, $schemaID = null): bool
+    protected function is_unique($data, $column, $schemaID = null): bool
     {
         if($this->db->getSchemaID() === null){
             throw new ValidationException('You need a model with a PRIMARY KEY to use the is_unique validation.');
         }
-        $queryBuilder = $this->db->getQueryBuilder();
-        $query = clone $queryBuilder;
-        $query->reset();
+        $db = $this->db->with();
+        $db->getQueryBuilder()->reset();
+        $db->getDataMapper()->getParameters(); // Prev parameters reset.
 
-        $query->offset(0)->limit(1);
+        $db->getQueryBuilder()->offset(0)
+            ->limit(1);
         if(!empty($schemaID)){
-            $query->where($this->db->getSchemaID(), $schemaID, '!=');
+            $db->getQueryBuilder()->where($db->getSchemaID(), $schemaID, '!=');
         }
-        $query->where($column, $data, '=');
-        $dataMapper = $this->db->getDataMapper();
-        $mapper = clone $dataMapper;
-        $mapper->getParameters(); // Prev parameters reset.
-        $mapper->persist($query->readQuery(), []);
-        return $mapper->numRows() < 1;
+        $db->getQueryBuilder()->where($column, $data, '=');
+        $db->getDataMapper()->persist($db->getQueryBuilder()->readQuery(), []);
+        $res = $db->getDataMapper()->numRows() < 1;
+        unset($db);
+        return $res;
     }
 
     protected function required($data): bool
