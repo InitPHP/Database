@@ -319,7 +319,7 @@ class DB
         $schemaID = null;
         if(!empty($this->getSchemaID()) && isset($fields[$this->getSchemaID()])){
             $schemaID = $fields[$this->getSchemaID()];
-            $this->getQueryBuilder()->where($this->getSchemaID(), ':' . $schemaID);
+            $this->getQueryBuilder()->where($this->getSchemaID(), $schemaID);
             unset($fields[$this->getSchemaID()]);
         }
         if(empty($fields)){
