@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.12
+ * @version    1.1.13
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -26,7 +26,7 @@ trait ValidationRulesTrait
         if($this->db->getSchemaID() === null){
             throw new ValidationException('You need a model with a PRIMARY KEY to use the is_unique validation.');
         }
-        $db = $this->db->with();
+        $db = $this->db->newInstance();
         $db->getQueryBuilder()->reset();
         $db->getDataMapper()->getParameters(); // Prev parameters reset.
 
@@ -46,6 +46,7 @@ trait ValidationRulesTrait
     {
         if(!\is_iterable($data) && !\is_object($data)){
             $data = \trim((string)$data);
+            return $data !== '';
         }
         return !empty($data);
     }

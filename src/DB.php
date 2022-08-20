@@ -7,7 +7,7 @@
  * @author     Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright  Copyright © 2022 Muhammet ŞAFAK
  * @license    ./LICENSE  MIT
- * @version    1.1.12
+ * @version    1.1.13
  * @link       https://www.muhammetsafak.com.tr
  */
 
@@ -136,10 +136,9 @@ class DB
         throw new DatabaseException('The "' . $name . '" method does not exist.');
     }
 
-    public function with(): self
+    public function newInstance(): self
     {
-        $with = clone $this;
-        return $with;
+        return new self($this->configurations);
     }
 
     /**
@@ -162,7 +161,8 @@ class DB
 
     public function withSchema(string $schema): self
     {
-        return $this->with()->setSchema($schema);
+        $with = clone $this;
+        return $with->setSchema($schema);
     }
 
     /**
@@ -185,7 +185,8 @@ class DB
 
     public function withSchemaID(string $schemaID): self
     {
-        return $this->with()->setSchemaID($schemaID);
+        $with = clone $this;
+        return $with->setSchemaID($schemaID);
     }
 
     public function isError(): bool
