@@ -1,6 +1,6 @@
 <?php
 /**
- * Exceptions/ModelRelationsException
+ * Exceptions/ConnectionException
  *
  * This file is part of InitPHP Database.
  *
@@ -13,6 +13,6 @@
 
 namespace InitPHP\Database\Exceptions;
 
-class ModelRelationsException extends ModelException
+class ConnectionException extends \RuntimeException
 {
 }

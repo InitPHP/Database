@@ -23,7 +23,7 @@ composer require initphp/database
 or include the `src/init.php` file from this repo in your system.
 
 ```php
-require_once "src/init.php";
+require_once "src/Init.php";
 ```
 
 ## Usage
@@ -32,19 +32,16 @@ require_once "src/init.php";
 
 ```php
 require_once "vendor/autoload.php";
-use \InitPHP\Database\DB;
+use \InitPHP\Database\Facade\DB;
 
 // Connection
-$db = new DB([
+DB::createImmutable([
     'dsn'       => 'mysql:host=localhost;port=3306;dbname=test;charset=utf8mb4',
     'username'  => 'root',
     'password'  => '',
     'charset'   => 'utf8mb4',
     'collation' => 'utf8mb4_general_ci',
 ]);
-
-// If you are working with a single database, do not forget to make your connection global.
-$db->connectionAsGlobal();
 ```
 
 #### Create
@@ -52,13 +49,13 @@ $db->connectionAsGlobal();
 Single Row : 
 
 ```php
+use \InitPHP\Database\Facade\DB;
 $data = [
     'title'     => 'Post Title',
     'content'   => 'Post Content',
 ];
 
-/** @var $db \InitPHP\Database\DB */
-$isInsert = $db->table('post')
+$isInsert = DB::table('post')
                 ->create($data);
 
 /**
@@ -77,6 +74,8 @@ if($isInsert){
 Multi Row:
 
 ```php
+use \InitPHP\Database\Facade\DB;
+
 $data = [
     [
         'title'     => 'Post Title 1',
@@ -89,8 +88,7 @@ $data = [
     ],
 ];
 
-/** @var $db \InitPHP\Database\DB */
-$isInsert = $db->table('post')
+$isInsert = DB::table('post')
                 ->create($data);
 
 /**
@@ -111,11 +109,12 @@ if($isInsert){
 #### Read
 
 ```php
-/** @var $db \InitPHP\Database\DB */
-$db->select('user.name as author_name', 'post.id', 'post.title')
+use \InitPHP\Database\Facade\DB;
+
+DB::select('user.name as author_name', 'post.id', 'post.title')
     ->from('post')
     ->selfJoin('user', 'user.id=post.author')
-    ->where('post.status', true)
+    ->where('post.status', 1)
     ->orderBy('post.id', 'ASC')
     ->orderBy('post.created_at', 'DESC')
     ->offset(20)->limit(10);
@@ -129,9 +128,10 @@ $db->select('user.name as author_name', 'post.id', 'post.title')
 * ORDER BY post ASC, post.created_at DESC
 * LIMIT 20, 10
 */
-$res = $db->read();
-if($db->numRows() > 0){
-    foreach ($res as $row) {
+$res = DB::read();
+
+if($res->numRows() > 0){
+    foreach ($res->toAssoc() as $row) {
         echo $row['title'] . ' by ' . $row['author_name'] . '<br />';
     }
 }
@@ -140,13 +140,13 @@ if($db->numRows() > 0){
 #### Update
 
 ```php
+use \InitPHP\Database\Facade\DB;
 $data = [
     'title'     => 'New Title',
     'content'   => 'New Content',
 ];
 
-/** @var $db \InitPHP\Database\DB */
-$isUpdate = $db->from('post')
+$isUpdate = DB::from('post')
                 ->where('id', 13)
                 ->update($data);
     
@@ -165,8 +165,9 @@ if ($isUpdate) {
 #### Delete
 
 ```php
-/** @var $db \InitPHP\Database\DB */
-$isDelete = $db->from('post')
+use \InitPHP\Database\Facade\DB;
+
+$isDelete = DB::from('post')
                 ->where('id', 13)
                 ->delete();
     
@@ -177,6 +178,36 @@ $isDelete = $db->from('post')
 */
 if ($isUpdate) {
     // Success
+}
+```
+
+### RAW
+
+```php
+use \InitPHP\Database\Facade\DB;
+
+$res = DB::query("SELECT id FROM post WHERE user_id = :id", [
+    ':id'   => 5
+]);
+```
+
+#### Builder for RAW
+
+```php
+use \InitPHP\Database\Facade\DB;
+
+$res = DB::select(DB::raw("CONCAT(name, ' ', surname) AS fullname"))
+        ->where(DB::raw("title = '' AND (status = 1 OR status = 0)"))
+        ->limit(5)
+        ->get('users');
+/**
+ * SELECT CONCAT(name, ' ', surname) AS fullname 
+ * FROM users 
+ * WHERE title = '' AND (status = 1 OR status = 0)
+ * LIMIT 5
+ */
+foreach ($res->toAssoc() as $row) {
+    echo $row['fullname'];
 }
 ```
 
