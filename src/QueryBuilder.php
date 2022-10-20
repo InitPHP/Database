@@ -83,9 +83,14 @@ abstract class QueryBuilder
         return $this;
     }
 
-    final public function selectAs(string $column, string $alias): self
+    /**
+     * @param string|Raw $column
+     * @param string $alias
+     * @return $this
+     */
+    final public function selectAs($column, string $alias): self
     {
-        $this->_STRUCTURE['select'][] = $column . ' AS ' . $alias;
+        $this->_STRUCTURE['select'][] = (string)$column . ' AS ' . $alias;
         return $this;
     }
 
