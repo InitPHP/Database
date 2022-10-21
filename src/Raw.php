@@ -33,4 +33,9 @@ final class Raw
         return $this->raw;
     }
 
+    public static function raw(string $sqlQuery): self
+    {
+        return new self($sqlQuery);
+    }
+
 }
