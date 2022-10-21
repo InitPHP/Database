@@ -3,156 +3,154 @@ declare(strict_types=1);
 
 namespace Test\InitPHP\Database;
 
-use InitPHP\Database\DB;
-use \InitPHP\Database\QueryBuilder\{QueryBuilder, QueryBuilderInterface};
+use InitPHP\Database\Database;
+use InitPHP\Database\Helpers\Parameters;
 
 class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 {
 
-    private DB $db;
-    protected QueryBuilderInterface $qb;
+    protected Database $db;
 
     protected function setUp(): void
     {
-        $this->db = new DB([]);
-        $this->qb = new QueryBuilder($this->db);
+        $this->db = new Database();
         parent::setUp();
     }
 
     public function testSelectBuilder()
     {
-        $this->qb->select('id', 'name');
-        $this->qb->table('user');
+        $this->db->select('id', 'name');
+        $this->db->table('user');
 
         $expected = "SELECT id, name FROM user WHERE 1";
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testBlankBuild()
     {
-        $this->qb->from('post');
+        $this->db->from('post');
 
         $expected = 'SELECT * FROM post WHERE 1';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testSelfJoinBuild()
     {
-        $this->qb->select('post.id', 'post.title', 'user.name as authorName');
-        $this->qb->table('post');
-        $this->qb->selfJoin('user', 'user.id=post.user');
+        $this->db->select('post.id', 'post.title', 'user.name AS authorName')
+            ->table('post')
+            ->selfJoin('user', 'user.id = post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post, user WHERE user.id=post.user";
+        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post, user WHERE user.id = post.user";
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testInnerJoinBuild()
     {
-        $this->qb->select('post.id', 'post.title', 'user.name as authorName');
-        $this->qb->from('post');
-        $this->qb->innerJoin('user', 'user.id=post.user');
+        $this->db->select('post.id, post.title', 'user.name as authorName')
+            ->from('post')
+            ->innerJoin('user', 'user.id = post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post INNER JOIN user ON user.id=post.user WHERE 1";
+        $expected = "SELECT post.id, post.title, user.name as authorName FROM post INNER JOIN user ON user.id = post.user WHERE 1";
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testLeftJoinBuild()
     {
-        $this->qb->select('post.id', 'post.title', 'user.name as authorName');
-        $this->qb->from('post');
-        $this->qb->leftJoin('user', 'user.id=post.user');
+        $this->db->select('post.id', 'post.title', 'user.name as authorName');
+        $this->db->from('post');
+        $this->db->leftJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post LEFT JOIN user ON user.id=post.user WHERE 1";
+        $expected = "SELECT post.id, post.title, user.name as authorName FROM post LEFT JOIN user ON user.id=post.user WHERE 1";
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testRightJoinBuild()
     {
-        $this->qb->select('post.id', 'post.title', 'user.name as authorName');
-        $this->qb->from('post');
-        $this->qb->rightJoin('user', 'user.id=post.user');
+        $this->db->select('post.id', 'post.title', 'user.name as authorName');
+        $this->db->from('post');
+        $this->db->rightJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post RIGHT JOIN user ON user.id=post.user WHERE 1";
+        $expected = "SELECT post.id, post.title, user.name as authorName FROM post RIGHT JOIN user ON user.id=post.user WHERE 1";
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testLeftOuterJoinBuild()
     {
-        $this->qb->select('post.id', 'post.title', 'user.name as authorName');
-        $this->qb->from('post');
-        $this->qb->leftOuterJoin('user', 'user.id=post.user');
+        $this->db->select('post.id', 'post.title', 'user.name as authorName');
+        $this->db->from('post');
+        $this->db->leftOuterJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post LEFT OUTER JOIN user ON user.id=post.user WHERE 1";
+        $expected = "SELECT post.id, post.title, user.name as authorName FROM post LEFT OUTER JOIN user ON user.id=post.user WHERE 1";
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testRightOuterJoinBuild()
     {
-        $this->qb->select('post.id', 'post.title', 'user.name as authorName');
-        $this->qb->from('post');
-        $this->qb->rightOuterJoin('user', 'user.id=post.user');
+        $this->db->select('post.id', 'post.title', 'user.name as authorName');
+        $this->db->from('post');
+        $this->db->rightOuterJoin('user', 'user.id=post.user');
 
-        $expected = "SELECT post.id, post.title, user.name AS authorName FROM post RIGHT OUTER JOIN user ON user.id=post.user WHERE 1";
+        $expected = "SELECT post.id, post.title, user.name as authorName FROM post RIGHT OUTER JOIN user ON user.id=post.user WHERE 1";
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testLimitStatement()
     {
-        $this->qb->select('id')
+        $this->db->select('id')
             ->from('book')
             ->limit(5);
 
         $expected = 'SELECT id FROM book WHERE 1 LIMIT 5';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testOffsetStatement()
     {
-        $this->qb->select('id')
+        $this->db->select('id')
             ->from('book')
             ->offset(5);
 
-        // Offset is specified If no limit is specified; The limit is 1000.
-        $expected = 'SELECT id FROM book WHERE 1 LIMIT 5, 1000';
+        // Offset is specified If no limit is specified; The limit is 10000.
+        $expected = 'SELECT id FROM book WHERE 1 LIMIT 5, 10000';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testOffsetLimitStatement()
     {
-        $this->qb->select('id')
+        $this->db->select('id')
             ->from('book')
             ->offset(50)
             ->limit(25);
 
         $expected = 'SELECT id FROM book WHERE 1 LIMIT 50, 25';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testNegativeOffsetLimitStatement()
     {
-        $this->qb->select('id')
+        $this->db->select('id')
             ->from('book')
             ->offset(-25)
             ->limit(-20);
@@ -160,31 +158,31 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         // If limit and offset are negative integers, their absolute values are taken.
         $expected = 'SELECT id FROM book WHERE 1 LIMIT 25, 20';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testSelectDistinctStatement()
     {
-        $this->qb->selectDistinct('name')
+        $this->db->selectDistinct('name')
             ->from('book');
         $expected = 'SELECT DISTINCT(name) FROM book WHERE 1';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
 
-        $this->qb->selectDistinct('author.name')
+        $this->db->selectDistinct('author.name')
             ->from('book')
             ->innerJoin('author', 'author.id=book.author');
         $expected = 'SELECT DISTINCT(author.name) FROM book INNER JOIN author ON author.id=book.author WHERE 1';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testOrderByStatement()
     {
-        $this->qb->select('name')
+        $this->db->select('name')
             ->from('book')
             ->orderBy('authorId', 'ASC')
             ->orderBy('id', 'DESC')
@@ -192,13 +190,13 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $expected = 'SELECT name FROM book WHERE 1 ORDER BY authorId ASC, id DESC LIMIT 10';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testInsertStatementBuild()
     {
-        $this->qb->from('post');
+        $this->db->from('post');
 
         $data = [
             'title'     => 'Post Title',
@@ -208,13 +206,14 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         ];
 
         $expected = 'INSERT INTO post (title, content, author, status) VALUES (:title, :content, :author, :status);';
-        $this->assertEquals($expected, $this->qb->insertQuery($data));
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_insertQuery($data));
+        $this->db->reset();
     }
 
     public function testMultiInsertStatementBuild()
     {
-        $this->qb->from('post');
+        Parameters::reset();
+        $this->db->from('post');
 
         $data = [
             [
@@ -231,13 +230,14 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         ];
 
         $expected = 'INSERT INTO post (title, content, author, status) VALUES (:title, :content, :author, :status), (:title_1, :content_1, NULL, :status_1);';
-        $this->assertEquals($expected, $this->qb->insertQuery($data));
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_insertQuery($data));
+        $this->db->reset();
     }
 
     public function testUpdateStatementBuild()
     {
-        $this->qb->from('post')
+        Parameters::reset();
+        $this->db->from('post')
             ->where('status', true)
             ->limit(5);
 
@@ -248,97 +248,100 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $expected = 'UPDATE post SET title = :title, status = :status_1 WHERE status = :status LIMIT 5';
 
-        $this->assertEquals($expected, $this->qb->updateQuery($data));
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_updateQuery($data));
+        $this->db->reset();
     }
 
     public function testDeleteStatementBuild()
     {
-        $this->qb->from('post')
+        Parameters::reset();
+        $this->db->from('post')
             ->where('authorId', 5)
             ->limit(100);
 
         $expected = 'DELETE FROM post WHERE authorId = :authorId LIMIT 100';
 
-        $this->assertEquals($expected, $this->qb->deleteQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_deleteQuery());
+        $this->db->reset();
     }
 
     public function testWhereSQLFunctionStatementBuild()
     {
-        $this->qb->from('post')
+        $this->db->from('post')
             ->andBetween('date', ['2022-05-07', 'CURDATE()']);
 
         $expected = 'SELECT * FROM post WHERE date BETWEEN :date_start AND CURDATE()';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testWhereRegexpSQLStatementBuild()
     {
-        $this->qb->from('post')
+        $this->db->from('post')
             ->regexp('title', '^M[a-z]K$');
 
         $expected = 'SELECT * FROM post WHERE title REGEXP :title';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
     public function testSelectCoalesceSQLStatementBuild()
     {
 
-        $this->qb->select('post.title')
-            ->selectCoalesce('stat.view as view', 0)
+        Parameters::reset();
+        $this->db->select('post.title')
+            ->selectCoalesce('stat.view', 0)
             ->from('post')
             ->leftJoin('stat', 'stat.id=post.id')
             ->where('post.id', 5);
 
-        $expected = 'SELECT post.title, COALESCE(stat.view, 0) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = :postid';
+        $expected = 'SELECT post.title, COALESCE(stat.view, 0) FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = :postid';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
-        $this->db->getDataMapper()->getParameters();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
 
-        $this->qb->select('post.title')
-            ->selectCoalesce('stat.view as view', 'post.view')
+        Parameters::reset();
+        $this->db->select('post.title')
+            ->selectCoalesce('stat.view', 'post.view', 'views')
             ->from('post')
             ->leftJoin('stat', 'stat.id=post.id')
             ->where('post.id', 5);
 
-        $expected = 'SELECT post.title, COALESCE(stat.view, post.view) AS view FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = :postid';
+        $expected = 'SELECT post.title, COALESCE(stat.view, post.view) AS views FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = :postid';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
 
     public function testTableAliasSQLStatementBuild()
     {
 
-        $this->qb->select('p.title')
+        Parameters::reset();
+        $this->db->select('p.title')
             ->select('s.view as s_view')
             ->from('post as p')
             ->leftJoin('stat as s', 's.id=p.id')
             ->where('p.id', 5);
 
-        $expected = 'SELECT p.title, s.view AS s_view FROM post AS p LEFT JOIN stat AS s ON s.id=p.id WHERE p.id = :pid';
+        $expected = 'SELECT p.title, s.view as s_view FROM post as p LEFT JOIN stat as s ON s.id=p.id WHERE p.id = :pid';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
-        $this->db->getDataMapper()->getParameters(); // parameter reset
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
 
-        $this->qb->select('p.title')
+        Parameters::reset();
+        $this->db->select('p.title')
             ->select('s.view as s_view')
             ->from('post p')
             ->leftJoin('stat s', 's.id=p.id')
             ->where('p.id', 5);
 
-        $expected = 'SELECT p.title, s.view AS s_view FROM post AS p LEFT JOIN stat AS s ON s.id=p.id WHERE p.id = :pid';
+        $expected = 'SELECT p.title, s.view as s_view FROM post p LEFT JOIN stat s ON s.id=p.id WHERE p.id = :pid';
 
-        $this->assertEquals($expected, $this->qb->readQuery());
-        $this->qb->reset();
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
     }
 
 }
