@@ -61,7 +61,11 @@ final class Result
         return $this->query;
     }
 
-    public function toEntity(string $entityClass = Entity::class): array|object|null
+    /**
+     * @param string $entityClass
+     * @return array|object|null
+     */
+    public function toEntity(string $entityClass = Entity::class)
     {
         if($this->num_rows === 0){
             return null;
@@ -106,7 +110,10 @@ final class Result
         return $this;
     }
 
-    public function toObject(): object|array|null
+    /**
+     * @return object|array|null
+     */
+    public function toObject()
     {
         if($this->num_rows === 0){
             return null;

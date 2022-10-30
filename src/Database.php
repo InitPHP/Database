@@ -25,6 +25,12 @@ use \PDO;
 class Database extends QueryBuilder
 {
 
+    public const ENTITY = 0;
+    public const ASSOC = 1;
+    public const ARRAY = 2;
+    public const OBJECT = 3;
+    public const LAZY = 4;
+
     private PDO $_pdo;
 
     private static PDO $_globalPDO;
@@ -52,6 +58,7 @@ class Database extends QueryBuilder
         'writable'              => true,
         'deletable'             => true,
         'updatable'             => true,
+        'return'                => null,
     ];
 
     private Result $_last;
@@ -107,12 +114,33 @@ class Database extends QueryBuilder
         }
         if(!isset($this->_pdo)){
             try {
-                $this->_pdo = new PDO($this->_credentials['dsn'], $this->_credentials['username'], $this->_credentials['password'], [
+                $options = [
                     PDO::ATTR_EMULATE_PREPARES      => false,
                     PDO::ATTR_PERSISTENT            => true,
                     PDO::ATTR_ERRMODE               => PDO::ERRMODE_EXCEPTION,
-                    PDO::ATTR_DEFAULT_FETCH_MODE    => PDO::FETCH_BOTH
-                ]);
+                ];
+                switch ($this->_credentials['return']) {
+                    case null:
+                    case self::ARRAY:
+                        $options[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_BOTH;
+                        break;
+                    case self::ASSOC:
+                        $options[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_ASSOC;
+                        break;
+                    case self::ENTITY:
+                        $options[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_CLASS;
+                        break;
+                    case self::OBJECT:
+                        $options[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_OBJ;
+                        break;
+                    case self::LAZY:
+                        $options[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_LAZY;
+                        break;
+                    default:
+                        $options[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_BOTH;
+                }
+
+                $this->_pdo = new PDO($this->_credentials['dsn'], $this->_credentials['username'], $this->_credentials['password'], $options);
                 if(!empty($this->_credentials['charset'])){
                     if(!empty($this->_credentials['collation'])) {
                         $this->_pdo->exec("SET NAMES '" . $this->_credentials['charset'] . "' COLLATE '" . $this->_credentials['collation'] . "'");
@@ -306,7 +334,24 @@ class Database extends QueryBuilder
                     $this->_errors[] = $errorCode . ' - ' . $errorInfo[2];
                 }
             }
-            return $this->_last = new Result($stmt);
+            $this->_last = new Result($stmt);
+            if($this->_credentials['return'] === null){
+                return $this->_last;
+            }
+            switch ($this->_credentials['return']) {
+                case self::ASSOC:
+                    return $this->_last->asAssoc();
+                case self::ARRAY:
+                    return $this->_last->asArray();
+                case self::ENTITY:
+                    return $this->_last->asEntity();
+                case self::OBJECT:
+                    return $this->_last->asObject();
+                case self::LAZY:
+                    return $this->_last->asLazy();
+                default:
+                    return $this->_last;
+            }
         } catch (\Exception $e) {
             $message = $e->getMessage();
             if(($this->_credentials['debug'] ?? false) === TRUE){
