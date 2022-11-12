@@ -513,6 +513,49 @@ class Database extends QueryBuilder
     }
 
     /**
+     * @param array $set
+     * @param string $referenceColumn
+     * @return bool
+     */
+    public function updateBatch(array $set, string $referenceColumn)
+    {
+        if($this->_credentials['updatable'] === FALSE){
+            throw new UpdatableException('');
+        }
+        $schemaID = $this->getSchemaID();
+
+        $results = [];
+        $setUpdate = [];
+
+        foreach ($set as $data) {
+            if(!\is_array($data) || \array_key_exists($referenceColumn, $data)){
+                continue;
+            }
+
+            $setUpdate[] = $data;
+            $this->_validation->setData($data);
+            foreach ($data as $column => $value) {
+                if($column == $referenceColumn){
+                    continue;
+                }
+                if($this->_validation->validation($column, $schemaID) === FALSE){
+                    $this->_errors[] = $this->_validation->getError();
+                    return false;
+                }
+            }
+
+            if(!empty($this->_credentials['updatedField'])){
+                $setUpdate[$this->_credentials['updatedField']] = \date($this->_credentials['timestampFormat']);
+            }
+        }
+
+        $res = $this->query($this->_updateBatchQuery($setUpdate, $referenceColumn));
+        $this->reset();
+
+        return $res->numRows() > 0;
+    }
+
+    /**
      * @param array $conditions
      * @return bool
      */
@@ -657,6 +700,60 @@ class Database extends QueryBuilder
         if($schemaID !== null && isset($data[$schemaID])){
             $this->where($schemaID, $data[$schemaID]);
         }
+        return 'UPDATE '
+            . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']))
+            . ' SET '
+            . \implode(', ', $update)
+            . $this->_whereQuery()
+            . $this->_havingQuery()
+            . $this->_limitQuery();
+    }
+
+    public function _updateBatchQuery(array $data, $referenceColumn): string
+    {
+        $updateData = []; $columns = []; $where = [];
+        $schemaID = $this->getSchemaID();
+        foreach ($data as $set) {
+            if(!\is_array($set) || !isset($set[$referenceColumn])){
+                continue;
+            }
+            $setData = [];
+            foreach ($set as $key => $value) {
+                if($key === $schemaID){
+                    continue;
+                }
+                if($this->_credentials['allowedFields'] !== null && $key != $referenceColumn && !\in_array($key, $this->_credentials['allowedFields'])){
+                    continue;
+                }
+                if($key == $referenceColumn){
+                    $where[] = $value;
+                    continue;
+                }
+                $setData[$key] = Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($key, $value);
+                if(!\in_array($key, $columns)){
+                    $columns[] = $key;
+                }
+            }
+            $updateData[] = $setData;
+        }
+
+        $update = [];
+        foreach ($columns as $column) {
+            $syntax = $column . ' = CASE';
+            foreach ($updateData as $key => $values) {
+                if(!\array_key_exists($column, $values)){
+                    continue;
+                }
+                $syntax .= ' WHEN ' . $referenceColumn . ' = '
+                    . (Helper::isSQLParameterOrFunction($where[$key]) ? $where[$key] : Parameters::add($referenceColumn, $where[$key]))
+                    . ' THEN '
+                    . $values[$column];
+            }
+            $syntax .= ' ELSE ' . $column . ' END';
+            $update[] = $syntax;
+        }
+        $this->in($referenceColumn, $where);
+
         return 'UPDATE '
             . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']))
             . ' SET '

@@ -162,6 +162,44 @@ if ($isUpdate) {
 }
 ```
 
+##### Update Batch
+
+```php
+use \InitPHP\Database\Facade\DB;
+$data = [
+    [
+        'id'        => 5,
+        'title'     => 'New Title #5',
+        'content'   => 'New Content #5',
+    ],
+    [
+        'id'        => 10,
+        'title'     => 'New Title #10',
+    ]
+];
+
+$isUpdate = DB::from('post')
+                ->where('status', 1)
+                ->updateBatch($data, 'id');
+    
+/**
+* This executes the following query.
+* 
+* UPDATE post SET 
+* 	title = CASE 
+* 		WHEN id = 5 THEN 'New Title #5' 
+* 		WHEN id = 10 THEN 'New Title #10' 
+* 		ELSE title END, 
+* 	content = CASE 
+* 		WHEN id = 5 THEN 'New Content #5'
+* 		ELSE content END 
+* WHERE status = 1 AND id IN (5, 10)
+*/
+if ($isUpdate) {
+    // Success
+}
+```
+
 #### Delete
 
 ```php
