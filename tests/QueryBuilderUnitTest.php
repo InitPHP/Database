@@ -252,6 +252,30 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->reset();
     }
 
+    public function testUpdateBatchStatementBuild()
+    {
+        Parameters::reset();
+        $this->db->from('post')
+            ->where('status', true);
+
+        $data = [
+            [
+                'id'        => 5,
+                'title'     => 'New Title #5',
+                'content'   => 'New Content #5',
+            ],
+            [
+                'id'        => 10,
+                'title'     => 'New Title #10',
+            ]
+        ];
+
+        $expected = 'UPDATE post SET title = CASE WHEN id = :id THEN :title WHEN id = :id_1 THEN :title_1 ELSE title END, content = CASE WHEN id = :id_2 THEN :content ELSE content END WHERE status = :status AND id IN (5, 10)';
+
+        $this->assertEquals($expected, $this->db->_updateBatchQuery($data, 'id'));
+        $this->db->reset();
+    }
+
     public function testDeleteStatementBuild()
     {
         Parameters::reset();

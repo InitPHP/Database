@@ -327,6 +327,38 @@ abstract class Model extends Database
     }
 
     /**
+     * @param array $set
+     * @param string $referenceColumn
+     * @return array|false
+     */
+    final public function updateBatch(array $set, string $referenceColumn)
+    {
+        if($this->isUpdatable() === FALSE){
+            throw new UpdatableException('"' . \get_called_class() . '" is not a updatable model.');
+        }
+
+        foreach ($set as &$data) {
+            $data = $this->callbacksFunctionHandler($data, 'beforeUpdate');
+            if($data === FALSE){
+                return false;
+            }
+        }
+
+        if(parent::updateBatch($set, $referenceColumn) === FALSE){
+            return false;
+        }
+
+        foreach ($set as &$row) {
+            $row = $this->callbacksFunctionHandler($row, 'afterUpdate');
+            if($row === FALSE){
+                return false;
+            }
+        }
+
+        return $set;
+    }
+
+    /**
      * @param int|string|null $id
      * @return array|bool
      */
