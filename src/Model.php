@@ -409,7 +409,7 @@ abstract class Model extends Database
      * @return $this
      * @throws \ReflectionException
      */
-    final public function relation($model, ?string $fromColumn, ?string $targetColumn = null, string $joinType = 'INNER'): self
+    final public function relation($model, ?string $fromColumn = null, ?string $targetColumn = null, string $joinType = 'INNER'): self
     {
         $from = [
             'tableSchema'   => $this->getSchema(),
