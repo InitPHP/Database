@@ -210,7 +210,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->reset();
     }
 
-    public function testMultiInsertStatementBuild()
+    public function testInsertBatchStatementBuild()
     {
         Parameters::reset();
         $this->db->from('post');
@@ -230,7 +230,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         ];
 
         $expected = 'INSERT INTO post (title, content, author, status) VALUES (:title, :content, :author, :status), (:title_1, :content_1, NULL, :status_1);';
-        $this->assertEquals($expected, $this->db->_insertQuery($data));
+        $this->assertEquals($expected, $this->db->_insertBatchQuery($data));
         $this->db->reset();
     }
 

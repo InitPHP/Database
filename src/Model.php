@@ -249,6 +249,15 @@ abstract class Model extends Database
      * @param array $set
      * @return array|false
      */
+    final public function createBatch(array $set)
+    {
+        return $this->insertBatch($set);
+    }
+
+    /**
+     * @param array $set
+     * @return array|false
+     */
     final public function insert(array $set)
     {
         if($this->isWritable() === FALSE){
@@ -266,6 +275,41 @@ abstract class Model extends Database
         }
 
         return $this->isCallbacksFunction('afterInsert') ? $this->callbacksFunctionHandler($data, 'afterInsert') : true;
+    }
+
+    /**
+     * @param array $set
+     * @return array|false
+     */
+    final public function insertBatch(array $set)
+    {
+        if($this->isUpdatable() === FALSE){
+            throw new UpdatableException('"' . \get_called_class() . '" is not a updatable model.');
+        }
+
+        if($this->isCallbacksFunction('beforeInsert', 'afterInsert')){
+            foreach ($set as &$data) {
+                $data = $this->callbacksFunctionHandler($data, 'beforeInsert');
+                if($data === FALSE){
+                    return false;
+                }
+            }
+        }
+
+        if(parent::createBatch($set) === FALSE){
+            return false;
+        }
+
+        if($this->isCallbacksFunction('afterInsert')){
+            foreach ($set as &$row) {
+                $row = $this->callbacksFunctionHandler($row, 'afterInsert');
+                if($row === FALSE){
+                    return false;
+                }
+            }
+        }
+
+        return $set;
     }
 
     /**
