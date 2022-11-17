@@ -415,29 +415,49 @@ class Database extends QueryBuilder
             if($isCreatedField){
                 $data[$this->_credentials['createdField']] = $createdFieldParameterName;
             }
-        }else{
-            $i = 0;
-            foreach ($set as $row) {
-                $data[$i] = [];
-                $this->_validation->setData($row);
-                foreach ($row as $column => $value) {
-                    if($this->_validation->validation($column, null) === FALSE){
-                        $this->_errors[] = $this->_validation->getError();
-                        return false;
-                    }
-                    $data[$i][$column] = $value;
-                }
-                if(empty($data[$i])){
-                    continue;
-                }
-                if($isCreatedField){
-                    $data[$i][$this->_credentials['createdField']] = $createdFieldParameterName;
-                }
-                ++$i;
-            }
         }
+
         $res = $this->query($this->_insertQuery($data));
         $this->reset();
+        return $res->numRows() > 0;
+    }
+
+    /**
+     * @param array $set
+     * @return bool
+     */
+    public function createBatch(array $set)
+    {
+        if($this->_credentials['writable'] === FALSE){
+            throw new WritableException('');
+        }
+        $isCreatedField = !empty($this->_credentials['createdField']);
+        if($isCreatedField){
+            $createdFieldParameterName = Parameters::add($this->_credentials['createdField'], \date($this->_credentials['timestampFormat']));
+        }
+        $data = [];
+        $i = 0;
+        foreach ($set as $row) {
+            $data[$i] = [];
+            $this->_validation->setData($row);
+            foreach ($row as $column => $value) {
+                if($this->_validation->validation($column, null) === FALSE){
+                    $this->_errors[] = $this->_validation->getError();
+                    return false;
+                }
+                $data[$i][$column] = $value;
+            }
+            if(empty($data[$i])){
+                continue;
+            }
+            if($isCreatedField){
+                $data[$i][$this->_credentials['createdField']] = $createdFieldParameterName;
+            }
+            ++$i;
+        }
+        $res = $this->query($this->_insertBatchQuery($data));
+        $this->reset();
+
         return $res->numRows() > 0;
     }
 
@@ -636,21 +656,28 @@ class Database extends QueryBuilder
         $columns = [];
         $values = [];
 
-        if(\count($data) === \count($data, \COUNT_RECURSIVE)){
-            foreach ($data as $column => $value) {
-                $column = \trim($column);
-                if($this->_credentials['allowedFields'] !== null && !\in_array($column, $this->_credentials['allowedFields'])){
-                    continue;
-                }
-                $columns[] = $column;
-                $values[] = Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($column, $value);
+        foreach ($data as $column => $value) {
+            $column = \trim($column);
+            if($this->_credentials['allowedFields'] !== null && !\in_array($column, $this->_credentials['allowedFields'])){
+                continue;
             }
-            if(empty($columns)){
-                return '';
-            }
-            return $sql
-                . ' (' . \implode(', ', $columns) . ') VALUES (' . \implode(', ', $values) . ');';
+            $columns[] = $column;
+            $values[] = Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($column, $value);
         }
+        if(empty($columns)){
+            return '';
+        }
+        return $sql
+            . ' (' . \implode(', ', $columns) . ') VALUES (' . \implode(', ', $values) . ');';
+    }
+
+    public function _insertBatchQuery($data): string
+    {
+        $sql = 'INSERT INTO'
+            . ' '
+            . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']));
+        $columns = [];
+        $values = [];
 
         foreach ($data as &$row) {
             $value = [];
@@ -676,6 +703,7 @@ class Database extends QueryBuilder
             }
             $multiValues[] = '(' . \implode(', ', $value) . ')';
         }
+
         return $sql . ' (' . \implode(', ', $columns) . ') VALUES '
             . \implode(', ', $multiValues) . ';';
     }

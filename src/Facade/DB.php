@@ -44,6 +44,7 @@ use \InitPHP\Database\{Database,
  * @method static int insertId()
  * @method static Result get(?string $table = null)
  * @method static bool create(array $set)
+ * @method static bool createBatch(array $set)
  * @method static Result read(array $selector = [], array $conditions = [], array $parameters = [])
  * @method static Result readOne(array $selector = [], array $conditions = [], array $parameters = [])
  * @method static bool update(array $set)

@@ -237,38 +237,84 @@ abstract class Model extends Database
     }
 
     /**
-     * @param array $data
+     * @param array $set
      * @return array|false
      */
-    final public function create(array $data)
+    final public function create(array $set)
     {
-        return $this->insert($data);
+        return $this->insert($set);
     }
 
     /**
-     * @param array $data
+     * @param array $set
      * @return array|false
      */
-    final public function insert(array $data)
+    final public function createBatch(array $set)
+    {
+        return $this->insertBatch($set);
+    }
+
+    /**
+     * @param array $set
+     * @return array|false
+     */
+    final public function insert(array $set)
     {
         if($this->isWritable() === FALSE){
             throw new WritableException('"' . \get_called_class() . '" is not a writable model.');
         }
-        if(($data = $this->callbacksFunctionHandler($data, 'beforeInsert')) === FALSE){
+
+        $data = $this->isCallbacksFunction('beforeInsert', 'afterInsert') ? $this->callbacksFunctionHandler($set, 'beforeInsert') : $set;
+
+        if($data === FALSE){
             return false;
         }
 
-        $create = parent::create($data);
-
-        if($create === FALSE){
+        if(parent::create($data) === FALSE){
             return false;
         }
-        return $data = $this->callbacksFunctionHandler($data, 'afterInsert');
+
+        return $this->isCallbacksFunction('afterInsert') ? $this->callbacksFunctionHandler($data, 'afterInsert') : true;
+    }
+
+    /**
+     * @param array $set
+     * @return array|false
+     */
+    final public function insertBatch(array $set)
+    {
+        if($this->isUpdatable() === FALSE){
+            throw new UpdatableException('"' . \get_called_class() . '" is not a updatable model.');
+        }
+
+        if($this->isCallbacksFunction('beforeInsert', 'afterInsert')){
+            foreach ($set as &$data) {
+                $data = $this->callbacksFunctionHandler($data, 'beforeInsert');
+                if($data === FALSE){
+                    return false;
+                }
+            }
+        }
+
+        if(parent::createBatch($set) === FALSE){
+            return false;
+        }
+
+        if($this->isCallbacksFunction('afterInsert')){
+            foreach ($set as &$row) {
+                $row = $this->callbacksFunctionHandler($row, 'afterInsert');
+                if($row === FALSE){
+                    return false;
+                }
+            }
+        }
+
+        return $set;
     }
 
     /**
      * @param Entity $entity
-     * @return array|false
+     * @return array|bool
      */
     final public function save(Entity $entity)
     {
@@ -310,20 +356,22 @@ abstract class Model extends Database
 
     /**
      * @param array $set
-     * @return array|false
+     * @return array|bool
      */
     final public function update(array $set)
     {
         if($this->isUpdatable() === FALSE){
             throw new UpdatableException('"' . \get_called_class() . '" is not a updatable model.');
         }
-        if(($data = $this->callbacksFunctionHandler($set, 'beforeUpdate')) === FALSE){
+        $data = $this->isCallbacksFunction('beforeUpdate', 'afterUpdate') ? $this->callbacksFunctionHandler($set, 'beforeUpdate') : $set;
+        if($data === FALSE){
             return false;
         }
         if(parent::update($data) === FALSE){
             return false;
         }
-        return $data = $this->callbacksFunctionHandler($data, 'afterUpdate');
+
+        return $this->isCallbacksFunction('afterUpdate') ? $this->callbacksFunctionHandler($data, 'afterUpdate') : true;
     }
 
     /**
@@ -337,10 +385,12 @@ abstract class Model extends Database
             throw new UpdatableException('"' . \get_called_class() . '" is not a updatable model.');
         }
 
-        foreach ($set as &$data) {
-            $data = $this->callbacksFunctionHandler($data, 'beforeUpdate');
-            if($data === FALSE){
-                return false;
+        if($this->isCallbacksFunction('beforeUpdate', 'afterUpdate')){
+            foreach ($set as &$data) {
+                $data = $this->callbacksFunctionHandler($data, 'beforeUpdate');
+                if($data === FALSE){
+                    return false;
+                }
             }
         }
 
@@ -348,10 +398,12 @@ abstract class Model extends Database
             return false;
         }
 
-        foreach ($set as &$row) {
-            $row = $this->callbacksFunctionHandler($row, 'afterUpdate');
-            if($row === FALSE){
-                return false;
+        if($this->isCallbacksFunction('afterUpdate')){
+            foreach ($set as &$row) {
+                $row = $this->callbacksFunctionHandler($row, 'afterUpdate');
+                if($row === FALSE){
+                    return false;
+                }
             }
         }
 
@@ -370,26 +422,29 @@ abstract class Model extends Database
         if($id !== null && !empty($this->getSchemaID())){
             $this->where($this->getSchemaID(), $id);
         }
-        $clone = clone $this;
-        $parameters = Parameters::get();
-        $res = $clone->query($clone->_readQuery(), $parameters);
-        $data = $res->asAssoc()->results();
-        Parameters::merge($parameters);
-        unset($clone, $parameters);
 
-        if($data === null){
-            return true;
-        }
-        $data = $this->callbacksFunctionHandler($data, 'beforeDelete');
-        if($data === FALSE){
-            return false;
+        if ($this->isCallbacksFunction('beforeDelete', 'afterDelete')) {
+            $clone = clone $this;
+            $parameters = Parameters::get();
+            $res = $clone->query($clone->_readQuery(), $parameters);
+            $data = $res->asAssoc()->results();
+            Parameters::merge($parameters);
+            unset($clone, $parameters);
+
+            if($data === null){
+                return true;
+            }
+            $data = $this->callbacksFunctionHandler($data, 'beforeDelete');
+            if($data === FALSE){
+                return false;
+            }
         }
 
         if(parent::delete() === FALSE){
             return false;
         }
 
-        return $data = $this->callbacksFunctionHandler($data, 'afterDelete');
+        return $this->isCallbacksFunction('afterDelete') ? $this->callbacksFunctionHandler($data, 'afterDelete') : true;
     }
 
     final public function purgeDeleted(): bool
@@ -409,7 +464,7 @@ abstract class Model extends Database
      * @return $this
      * @throws \ReflectionException
      */
-    final public function relation($model, ?string $fromColumn, ?string $targetColumn = null, string $joinType = 'INNER'): self
+    final public function relation($model, ?string $fromColumn = null, ?string $targetColumn = null, string $joinType = 'INNER'): self
     {
         $from = [
             'tableSchema'   => $this->getSchema(),
@@ -490,19 +545,34 @@ abstract class Model extends Database
     }
 
     /**
+     * @param string ...$methods
+     * @return bool
+     */
+    private function isCallbacksFunction(string ...$methods): bool
+    {
+        if(($this->allowedCallbacks ?? false) === FALSE){
+            return false;
+        }
+        foreach ($methods as $method) {
+            $callbacks = $this->{$method} ?? null;
+            if(!empty($callbacks)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
      * @param array $data
      * @param string $method
      * @return array|false
      */
     private function callbacksFunctionHandler(array $data, string $method)
     {
-        if(($this->allowedCallbacks ?? false) === FALSE){
+        if(!$this->isCallbacksFunction($method)){
             return $data;
         }
         $callbacks = $this->{$method};
-        if(!\is_array($callbacks)){
-            return $data;
-        }
 
         foreach ($callbacks as $callback) {
             if(\is_string($callback)){

@@ -46,8 +46,6 @@ DB::createImmutable([
 
 #### Create
 
-Single Row : 
-
 ```php
 use \InitPHP\Database\Facade\DB;
 $data = [
@@ -71,7 +69,7 @@ if($isInsert){
 }
 ```
 
-Multi Row:
+##### Create Batch
 
 ```php
 use \InitPHP\Database\Facade\DB;
@@ -89,7 +87,7 @@ $data = [
 ];
 
 $isInsert = DB::table('post')
-                ->create($data);
+                ->createBatch($data);
 
 /**
 * This executes the following query.
