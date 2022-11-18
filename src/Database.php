@@ -7,12 +7,13 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.5
+ * @version     2.0.6
  * @link        https://www.muhammetsafak.com.tr
  */
 
 namespace InitPHP\Database;
 
+use InitPHP\Database\Utils\Pagination;
 use \InitPHP\Database\Exceptions\{WritableException,
     ReadableException,
     UpdatableException,
@@ -465,6 +466,30 @@ class Database extends QueryBuilder
         $this->reset();
 
         return $res->numRows() > 0;
+    }
+
+    /**
+     * QueryBuilder resetlemeden SELECT cümlesi kurar ve satır sayısını döndürür.
+     *
+     * @return int
+     */
+    public function count(): int
+    {
+        $this->_deleteFieldBuild(false);
+        $res = $this->query($this->_readQuery());
+
+        return $res->numRows();
+    }
+
+    public function pagination(int $page = 1, int $per_page_limit = 10, string $link = '?page={page}'): Pagination
+    {
+        $total_row = $this->count();
+        $this->offset(($page - 1) * $per_page_limit)
+            ->limit($per_page_limit);
+        $res = $this->query($this->_readQuery());
+        $this->reset();
+
+        return new Pagination($res, $page, $per_page_limit, $total_row, $link);
     }
 
     /**
