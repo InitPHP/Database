@@ -7,7 +7,7 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0
+ * @version     2.0.5
  * @link        https://www.muhammetsafak.com.tr
  */
 
@@ -59,6 +59,8 @@ class Database extends QueryBuilder
         'deletable'             => true,
         'updatable'             => true,
         'return'                => null,
+        'debug'                 => false,
+        'log'                   => null,
     ];
 
     private Result $_last;
@@ -354,9 +356,13 @@ class Database extends QueryBuilder
             }
         } catch (\Exception $e) {
             $message = $e->getMessage();
-            if(($this->_credentials['debug'] ?? false) === TRUE){
-                $message .= ' SQL : '
-                    . (empty($parameters) ? $sqlQuery : \strtr($sqlQuery, $parameters));
+            $sqlMessage = 'SQL : '
+                . (empty($parameters) ? $sqlQuery : strtr($sqlQuery, $parameters));
+            if(!empty($this->_credentials['log'])){
+                $this->_logCreate($message . ' ' . $sqlMessage);
+            }
+            if($this->_credentials['debug'] === TRUE){
+                $message .= $message . ' ' . $sqlMessage;
             }
             throw new SQLQueryExecuteException($e->getMessage(), (int)$e->getCode());
         }
@@ -799,6 +805,34 @@ class Database extends QueryBuilder
             . $this->_whereQuery()
             . $this->_havingQuery()
             . $this->_limitQuery();
+    }
+
+    protected function _logCreate(string $message): void
+    {
+        if(empty($this->_credentials['log'])){
+            return;
+        }
+        if(\is_callable($this->_credentials['log'])){
+            \call_user_func_array($this->_credentials['log'], [$message]);
+            return;
+        }
+        if(\is_string($this->_credentials['log'])){
+            $path = \strtr($this->_credentials['log'], [
+                '{timestamp}'   => \time(),
+                '{date}'        => \date("Y-m-d"),
+                '{year}'        => \date("Y"),
+                '{month}'       => \date("m"),
+                '{day}'         => \date("d"),
+                '{hour}'        => \date("H"),
+                '{minute}'      => \date("i"),
+                '{second}'      => \date("s"),
+            ]);
+            @\file_put_contents($path, $message, \FILE_APPEND);
+            return;
+        }
+        if(\is_object($this->_credentials['log']) && \method_exists($this->_credentials['log'], 'critical')){
+            $this->_credentials['log']->critical($message);
+        }
     }
 
     private function _whereQuery(): string
