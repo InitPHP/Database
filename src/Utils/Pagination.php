@@ -1,6 +1,6 @@
 <?php
 /**
- * Database
+ * Utils/Pagination
  *
  * This file is part of InitPHP Database.
  *
@@ -18,7 +18,7 @@ use InitPHP\Database\Result;
 /**
  * @mixin Result
  */
-class Pagination
+final class Pagination
 {
 
     private Result $result;
@@ -109,6 +109,9 @@ class Pagination
         ];
 
         for ($i = ($this->page + 1); $i <= ($this->page + $afterLimit); ++$i) {
+            if($i > $this->totalPage){
+                break;
+            }
             $pages[] = [
                 'url'       => $this->_linkGenerator($i),
                 'page'      => $i,
@@ -190,7 +193,7 @@ class Pagination
                 . $li_attr_prepare
                 . '><a href="' . $next['url'] . '"'
                 . $li_a_attr_prepare
-                . '>' . ($attrs['next_label'] ?? '&laquo;') . '</a></li>';
+                . '>' . ($attrs['next_label'] ?? '&raquo;') . '</a></li>';
         }
 
         $html .= '</ul></nav>';

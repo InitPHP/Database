@@ -34,3 +34,4 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'Model.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Raw.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Result.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Utils/Pagination.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'Utils/Datatables.php';

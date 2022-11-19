@@ -43,6 +43,20 @@ abstract class QueryBuilder
         $this->_STRUCTURE = self::STRUCTURE;
     }
 
+    public function importQB(array $structure): self
+    {
+        $this->_STRUCTURE = $structure;
+
+        return $this;
+    }
+
+    public function exportQB(): array
+    {
+        return $this->_STRUCTURE;
+    }
+
+
+
     /**
      * @param string|Raw ...$columns
      * @return $this
