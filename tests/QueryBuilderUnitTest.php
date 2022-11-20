@@ -5,6 +5,7 @@ namespace Test\InitPHP\Database;
 
 use InitPHP\Database\Database;
 use InitPHP\Database\Helpers\Parameters;
+use InitPHP\Database\QueryBuilder;
 
 class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 {
@@ -366,6 +367,37 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $this->assertEquals($expected, $this->db->_readQuery());
         $this->db->reset();
+    }
+
+    public function testWhereGroupStatement()
+    {
+        Parameters::reset();
+        $this->db->select('id, title, content, url')
+            ->from('posts')
+            ->where('status', 1)
+            ->group(function (Database $db) {
+                $db->where('user_id', 1)
+                    ->where('datetime', date("Y-m-d"), '>=');
+            }, 'or')
+            ->group(function (Database $db) {
+                $db->group(function (Database $db) {
+                    $db->where('id', 1)
+                        ->where('status', 0);
+                }, 'or')
+                    ->group(function (Database $db) {
+                        $db->where('id', 2)
+                            ->where('status', 1);
+                    }, 'or');
+            }, 'or');
+
+
+
+        $expected = 'SELECT id, title, content, url FROM posts WHERE status = :status AND (user_id = :user_id AND datetime >= :datetime) OR ((id = :id AND status = :status_1) OR (id = :id_1 AND status = :status_2))';
+
+        $this->assertEquals($expected, $this->db->_readQuery());
+        $this->db->reset();
+
+        Parameters::reset();
     }
 
 }

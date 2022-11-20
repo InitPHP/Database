@@ -7,7 +7,7 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.5
+ * @version     2.0.6
  * @link        https://www.muhammetsafak.com.tr
  */
 
@@ -33,3 +33,5 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'Entity.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Model.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Raw.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Result.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'Utils/Pagination.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'Utils/Datatables.php';

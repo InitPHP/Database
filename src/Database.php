@@ -7,12 +7,14 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.5
+ * @version     2.0.6
  * @link        https://www.muhammetsafak.com.tr
  */
 
 namespace InitPHP\Database;
 
+use InitPHP\Database\Utils\{Pagination,
+    Datatables};
 use \InitPHP\Database\Exceptions\{WritableException,
     ReadableException,
     UpdatableException,
@@ -81,6 +83,15 @@ class Database extends QueryBuilder
     {
         $this->setCredentials($credentials);
         $this->_validation = new Validation($this->_credentials['validation']['methods'], $this->_credentials['validation']['messages'], $this->_credentials['validation']['labels'], $this);
+    }
+
+    public function __call($name, $arguments)
+    {
+        if(Helper::str_starts_with($name, 'findBy') === FALSE){
+            throw new \RuntimeException('There is no "' . $name . '" method.');
+        }
+        $this->where(Helper::camelCaseToSnakeCase(\substr($name, 6)), \current($arguments));
+        return $this;
     }
 
     final public function newInstance(array $credentials = []): Database
@@ -625,6 +636,31 @@ class Database extends QueryBuilder
                 ->read();
     }
 
+    public function group(\Closure $group, string $logical = 'AND'): self
+    {
+        $logical = \str_replace(['&&', '||'], ['AND', 'OR'], \strtoupper($logical));
+        if(!\in_array($logical, ['AND', 'OR'], true)){
+            throw new \InvalidArgumentException('Logical operator OR, AND, && or || it could be.');
+        }
+
+        $clone = clone $this;
+        $clone->reset();
+
+        \call_user_func_array($group, [$clone]);
+
+        $where = $clone->_whereQuery();
+        if($where !== ''){
+            $this->_STRUCTURE['where'][$logical][] = '(' . $where . ')';
+        }
+
+        $having = $clone->_havingQuery();
+        if($having !== ''){
+            $this->_STRUCTURE['having'][$logical][] = '(' . $having . ')';
+        }
+        unset($clone);
+        return $this;
+    }
+
     public function onlyDeleted(): self
     {
         $this->_isOnlyDeletes = true;
@@ -637,17 +673,57 @@ class Database extends QueryBuilder
         return $this;
     }
 
+    /**
+     * QueryBuilder resetlemeden SELECT cümlesi kurar ve satır sayısını döndürür.
+     *
+     * @return int
+     */
+    public function count(): int
+    {
+        $select = $this->_STRUCTURE['select'];
+        $this->_STRUCTURE['select'][] = 'COUNT(*) AS row_count';
+        $this->_deleteFieldBuild(false);
+        $parameters = Parameters::get(false);
+        $res = $this->query($this->_readQuery());
+        $count = $res->toArray()['row_count'] ?? 0;
+        unset($res);
+        Parameters::merge($parameters);
+        $this->_STRUCTURE['select'] = $select;
+        return $count;
+    }
+
+    public function pagination(int $page = 1, int $per_page_limit = 10, string $link = '?page={page}'): Pagination
+    {
+        $total_row = $this->count();
+        $this->offset(($page - 1) * $per_page_limit)
+            ->limit($per_page_limit);
+        $res = $this->query($this->_readQuery());
+        $this->reset();
+
+        return new Pagination($res, $page, $per_page_limit, $total_row, $link);
+    }
+
+    public function datatables(array $columns, int $method = Datatables::GET_REQUEST): string
+    {
+        return (new Datatables($this, $columns, $method))->__toString();
+    }
+
     public function _readQuery(): string
     {
         if($this->getSchema() !== null){
             $this->table($this->getSchema());
         }
-
+        $where = $this->_whereQuery();
+        if($where !== ''){
+            $where = ' WHERE ' . $where;
+        }else{
+            $where = ' WHERE 1';
+        }
         return 'SELECT '
             . (empty($this->_STRUCTURE['select']) ? '*' : \implode(', ', $this->_STRUCTURE['select']))
             . ' FROM ' . \implode(', ', $this->_STRUCTURE['table'])
             . (!empty($this->_STRUCTURE['join']) ? ' ' . \implode(', ', $this->_STRUCTURE['join']) : '')
-            . $this->_whereQuery()
+            . $where
             . $this->_havingQuery()
             . (!empty($this->_STRUCTURE['group_by']) ? ' GROUP BY ' . \implode(', ', $this->_STRUCTURE['group_by']) : '')
             . (!empty($this->_STRUCTURE['order_by']) ? ' ORDER BY ' . \implode(', ', $this->_STRUCTURE['order_by']) : '')
@@ -734,11 +810,17 @@ class Database extends QueryBuilder
         if($schemaID !== null && isset($data[$schemaID])){
             $this->where($schemaID, $data[$schemaID]);
         }
+        $where = $this->_whereQuery();
+        if($where !== ''){
+            $where = ' WHERE ' . $where;
+        }else{
+            $where = ' WHERE 1';
+        }
         return 'UPDATE '
             . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']))
             . ' SET '
             . \implode(', ', $update)
-            . $this->_whereQuery()
+            . $where
             . $this->_havingQuery()
             . $this->_limitQuery();
     }
@@ -787,22 +869,33 @@ class Database extends QueryBuilder
             $update[] = $syntax;
         }
         $this->in($referenceColumn, $where);
-
+        $where = $this->_whereQuery();
+        if($where !== ''){
+            $where = ' WHERE ' . $where;
+        }else{
+            $where = ' WHERE 1';
+        }
         return 'UPDATE '
             . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']))
             . ' SET '
             . \implode(', ', $update)
-            . $this->_whereQuery()
+            . $where
             . $this->_havingQuery()
             . $this->_limitQuery();
     }
 
     public function _deleteQuery(): string
     {
+        $where = $this->_whereQuery();
+        if($where !== ''){
+            $where = ' WHERE ' . $where;
+        }else{
+            $where = ' WHERE 1';
+        }
         return 'DELETE FROM'
             . ' '
             . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']))
-            . $this->_whereQuery()
+            . $where
             . $this->_havingQuery()
             . $this->_limitQuery();
     }
@@ -840,10 +933,9 @@ class Database extends QueryBuilder
         $isAndEmpty = empty($this->_STRUCTURE['where']['AND']);
         $isOrEmpty = empty($this->_STRUCTURE['where']['OR']);
         if($isAndEmpty && $isOrEmpty){
-            return ' WHERE 1';
+            return '';
         }
-        return ' WHERE '
-            . (!$isAndEmpty ? \implode(' AND ', $this->_STRUCTURE['where']['AND']) : '')
+        return (!$isAndEmpty ? \implode(' AND ', $this->_STRUCTURE['where']['AND']) : '')
             . (!$isAndEmpty && !$isOrEmpty ? ' AND ' : '')
             . (!$isOrEmpty ? \implode(' OR ', $this->_STRUCTURE['where']['OR']) : '');
     }

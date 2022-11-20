@@ -7,7 +7,7 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.5
+ * @version     2.0.6
  * @link        https://www.muhammetsafak.com.tr
  */
 
@@ -42,6 +42,20 @@ abstract class QueryBuilder
     {
         $this->_STRUCTURE = self::STRUCTURE;
     }
+
+    public function importQB(array $structure): self
+    {
+        $this->_STRUCTURE = $structure;
+
+        return $this;
+    }
+
+    public function exportQB(): array
+    {
+        return $this->_STRUCTURE;
+    }
+
+
 
     /**
      * @param string|Raw ...$columns
