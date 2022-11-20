@@ -85,6 +85,15 @@ class Database extends QueryBuilder
         $this->_validation = new Validation($this->_credentials['validation']['methods'], $this->_credentials['validation']['messages'], $this->_credentials['validation']['labels'], $this);
     }
 
+    public function __call($name, $arguments)
+    {
+        if(Helper::str_starts_with($name, 'findBy') === FALSE){
+            throw new \RuntimeException('There is no "' . $name . '" method.');
+        }
+        $this->where(Helper::camelCaseToSnakeCase(\substr($name, 6)), \current($arguments));
+        return $this;
+    }
+
     final public function newInstance(array $credentials = []): Database
     {
         return new self(empty($credentials) ? $this->_credentials : \array_merge($this->_credentials, $credentials));
@@ -470,41 +479,6 @@ class Database extends QueryBuilder
     }
 
     /**
-     * QueryBuilder resetlemeden SELECT cümlesi kurar ve satır sayısını döndürür.
-     *
-     * @return int
-     */
-    public function count(): int
-    {
-        $select = $this->_STRUCTURE['select'];
-        $this->_STRUCTURE['select'][] = 'COUNT(*) AS row_count';
-        $this->_deleteFieldBuild(false);
-        $parameters = Parameters::get(false);
-        $res = $this->query($this->_readQuery());
-        $count = $res->toArray()['row_count'] ?? 0;
-        unset($res);
-        Parameters::merge($parameters);
-        $this->_STRUCTURE['select'] = $select;
-        return $count;
-    }
-
-    public function pagination(int $page = 1, int $per_page_limit = 10, string $link = '?page={page}'): Pagination
-    {
-        $total_row = $this->count();
-        $this->offset(($page - 1) * $per_page_limit)
-            ->limit($per_page_limit);
-        $res = $this->query($this->_readQuery());
-        $this->reset();
-
-        return new Pagination($res, $page, $per_page_limit, $total_row, $link);
-    }
-
-    public function datatables(array $columns, int $method = Datatables::GET_REQUEST): string
-    {
-        return (new Datatables($this, $columns, $method))->__toString();
-    }
-
-    /**
      * @param array $selector
      * @param array $conditions
      * @param array $parameters
@@ -697,6 +671,41 @@ class Database extends QueryBuilder
     {
         $this->_isOnlyDeletes = false;
         return $this;
+    }
+
+    /**
+     * QueryBuilder resetlemeden SELECT cümlesi kurar ve satır sayısını döndürür.
+     *
+     * @return int
+     */
+    public function count(): int
+    {
+        $select = $this->_STRUCTURE['select'];
+        $this->_STRUCTURE['select'][] = 'COUNT(*) AS row_count';
+        $this->_deleteFieldBuild(false);
+        $parameters = Parameters::get(false);
+        $res = $this->query($this->_readQuery());
+        $count = $res->toArray()['row_count'] ?? 0;
+        unset($res);
+        Parameters::merge($parameters);
+        $this->_STRUCTURE['select'] = $select;
+        return $count;
+    }
+
+    public function pagination(int $page = 1, int $per_page_limit = 10, string $link = '?page={page}'): Pagination
+    {
+        $total_row = $this->count();
+        $this->offset(($page - 1) * $per_page_limit)
+            ->limit($per_page_limit);
+        $res = $this->query($this->_readQuery());
+        $this->reset();
+
+        return new Pagination($res, $page, $per_page_limit, $total_row, $link);
+    }
+
+    public function datatables(array $columns, int $method = Datatables::GET_REQUEST): string
+    {
+        return (new Datatables($this, $columns, $method))->__toString();
     }
 
     public function _readQuery(): string
