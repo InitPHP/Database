@@ -433,6 +433,83 @@ class PostEntity extends \InitPHP\Database\Entity
 }
 ```
 
+### Logger
+
+```php
+use \InitPHP\Database\Facade\DB;
+
+DB::createImmutable([
+    'dsn'       => 'mysql:host=localhost;dbname=test;port=3306;charset=utf8mb4;',
+    'username'  => 'root',
+    'password'  => '',
+    
+    'log'       => __DIR__ '/logs/db.log', // string, callable or object
+]);
+```
+
+If you define a file path as a String; Attempts are made to write into it with `file_put_contents()`.
+
+_Note :_ You can define variables such as `{year}`, `{month}`, `{day}` in the filename.
+
+- You can also define an object with the `critical` method. The database library will pass the log message to this method as a parameter. Or define it as callable array to use any method of the object.
+
+```php
+use \InitPHP\Database\Facade\DB;
+
+class Logger {
+    
+    public function critical(string $msg)
+    {
+        $path = __DIR__ . '/log.log';
+        file_put_contents($path, $msg, FILE_APPEND);
+    }
+
+}
+
+$logger = new Logger();
+
+DB::createImmutable([
+    'dsn'       => 'mysql:host=localhost;dbname=test;port=3306;charset=utf8mb4;',
+    'username'  => 'root',
+    'password'  => '',
+    
+    'log'       => $logger, // or [$logger, 'critical']
+]);
+```
+
+- Similarly it is possible to define it in a callable method.
+
+```php
+use \InitPHP\Database\Facade\DB;
+
+DB::createImmutable([
+    'dsn'       => 'mysql:host=localhost;dbname=test;port=3306;charset=utf8mb4;',
+    'username'  => 'root',
+    'password'  => '',
+    
+    'log'       => function (string $msg) {
+        $path = __DIR__ . '/log.log';
+        file_put_contents($path, $msg, FILE_APPEND);
+    },
+]);
+```
+
+### DeBug Mode
+
+Debug mode is used to include the executed SQL statement in the error message. *__It should only be activated in the development environment__*.
+
+```php
+use \InitPHP\Database\Facade\DB;
+
+DB::createImmutable([
+    'dsn'       => 'mysql:host=localhost;dbname=test;port=3306;charset=utf8mb4;',
+    'username'  => 'root',
+    'password'  => '',
+    
+    'debug'     => true, // boolean
+]);
+```
+
 ## To Do
 
 - [ ] A more detailed documentation will be prepared.

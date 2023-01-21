@@ -43,6 +43,8 @@ use InitPHP\Database\{Database, Raw, Result, Utils\Pagination};
  * @method static Result get(?string $table = null)
  * @method static bool create(array $set)
  * @method static bool createBatch(array $set)
+ * @method static bool insert(array $set)
+ * @method static bool insertBatch(array $set)
  * @method static int count()
  * @method static Pagination pagination(int $page = 1, int $per_page_limit = 10, string $link = '?page={page}')
  * @method static Result read(array $selector = [], array $conditions = [], array $parameters = [])

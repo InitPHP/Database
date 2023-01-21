@@ -375,7 +375,7 @@ class Database extends QueryBuilder
             if($this->_credentials['debug'] === TRUE){
                 $message .= $message . ' ' . $sqlMessage;
             }
-            throw new SQLQueryExecuteException($e->getMessage(), (int)$e->getCode());
+            throw new SQLQueryExecuteException($message, (int)$e->getCode());
         }
     }
 
@@ -443,6 +443,15 @@ class Database extends QueryBuilder
      * @param array $set
      * @return bool
      */
+    public function insert(array $set)
+    {
+        return $this->create($set);
+    }
+
+    /**
+     * @param array $set
+     * @return bool
+     */
     public function createBatch(array $set)
     {
         if($this->_credentials['writable'] === FALSE){
@@ -476,6 +485,16 @@ class Database extends QueryBuilder
         $this->reset();
 
         return $res->numRows() > 0;
+    }
+
+
+    /**
+     * @param array $set
+     * @return bool
+     */
+    public function insertBatch(array $set)
+    {
+        return $this->createBatch($set);
     }
 
     /**
