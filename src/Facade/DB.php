@@ -7,7 +7,7 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.6
+ * @version     2.0.7
  * @link        https://www.muhammetsafak.com.tr
  */
 
@@ -43,6 +43,8 @@ use InitPHP\Database\{Database, Raw, Result, Utils\Pagination};
  * @method static Result get(?string $table = null)
  * @method static bool create(array $set)
  * @method static bool createBatch(array $set)
+ * @method static bool insert(array $set)
+ * @method static bool insertBatch(array $set)
  * @method static int count()
  * @method static Pagination pagination(int $page = 1, int $per_page_limit = 10, string $link = '?page={page}')
  * @method static Result read(array $selector = [], array $conditions = [], array $parameters = [])

@@ -7,7 +7,7 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.6
+ * @version     2.0.7
  * @link        https://www.muhammetsafak.com.tr
  */
 
@@ -32,6 +32,7 @@ final class Validation
         'string'            => 'Must be {field} string.',
         'int'               => 'Must be {field} integer.',
         'float'             => 'Must be {field} float.',
+        'unsigned'          => 'Must be {field} unsigned.',
         'numeric'           => 'Must be {field} numeric.',
         'alpha'             => 'Must be {field} alphabetical.',
         'alphaNumeric'      => 'Must be {field} alphanumeric.',
@@ -179,6 +180,11 @@ final class Validation
     protected function float($data): bool
     {
         return (bool)\preg_match('/^[+|\-]*[0-9]+[.]+[0-9]+$/', (string)$data);
+    }
+
+    protected function unsigned($data): bool
+    {
+        return !((bool)\preg_match('/^[+|\-]+/', (string)$data));
     }
 
     protected function numeric($data):bool
