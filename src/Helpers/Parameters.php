@@ -7,11 +7,13 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.7
+ * @version     2.0.8
  * @link        https://www.muhammetsafak.com.tr
  */
 
 namespace InitPHP\Database\Helpers;
+
+use InitPHP\Database\Raw;
 
 final class Parameters
 {
@@ -33,8 +35,11 @@ final class Parameters
         self::$parameters[$key] = $value;
     }
 
-    public static function add(string $key, $value): string
+    public static function add($key, $value): string
     {
+        if ($key instanceof Raw) {
+            $key = \md5((string)$key);
+        }
         $originKey = \ltrim(\str_replace('.', '', $key), ':');
         $i = 0;
         do{

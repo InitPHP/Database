@@ -7,7 +7,7 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.7
+ * @version     2.0.8
  * @link        https://www.muhammetsafak.com.tr
  */
 
@@ -20,6 +20,7 @@ use InitPHP\Database\Exceptions\{DeletableException,
     ReadableException,
     UpdatableException,
     WritableException};
+use InitPHP\Database\Helpers\Helper;
 use InitPHP\Database\Helpers\Parameters;
 
 abstract class Model extends Database
@@ -457,58 +458,41 @@ abstract class Model extends Database
     }
 
     /**
+     * İki model arasında bir JOIN ilişkisi kurar.
+     *
      * @param string|Model $model
-     * @param string|null $fromColumn
-     * @param string|null $targetColumn
+     * @param string|null $foreignKey
+     * @param string|null $localKey
      * @param string $joinType
      * @return $this
-     * @throws \ReflectionException
      */
-    final public function relation($model, ?string $fromColumn = null, ?string $targetColumn = null, string $joinType = 'INNER'): self
+    final public function relation($model, ?string $foreignKey = null, ?string $localKey = null, string $joinType = 'INNER'): self
     {
         $from = [
             'tableSchema'   => $this->getSchema(),
             'tableSchemaID' => $this->getSchemaID(),
         ];
-        $ref = new \ReflectionClass($model);
-        if($ref->isSubclassOf(Model::class) === FALSE){
-            throw new ModelRelationsException('The target class must be a subclass of \\InitPHP\\Database\\Model.');
-        }
-        if(\defined('PHP_VERSION_ID') && \PHP_VERSION_ID >= 80000){
-            $target = $ref->getProperty('table');
-            $targetPrimaryKey = $ref->getProperty('primaryKey');
-            if(($targetSchema = $target->getDefaultValue()) === null){
-                $targetSchema = \strtolower($ref->getShortName());
-            }
-            $targetSchemaID = $targetPrimaryKey->getDefaultValue();
-            $target = [
-                'tableSchema'   => $targetSchema,
-                'tableSchemaID' => $targetSchemaID,
-            ];
-        }else{
-            if(!\is_object($model)){
-                $model = $ref->newInstance();
-            }
-            $target = [
-                'tableSchema'   => $model->getSchema(),
-                'tableSchemaID' => $model->getSchemaID(),
-            ];
-        }
-        if($fromColumn === null || $fromColumn === '{primaryKey}'){
+        $target = $this->getModelTableNameAndPrimaryKeyColumn($model);
+
+        if($localKey === null || $localKey === '{primaryKey}'){
             if(empty($from['tableSchemaID'])){
                 throw new ModelRelationsException('To use relationships, the model must have a primary key column.');
             }
         }else{
-            $from['tableSchemaID'] = $fromColumn;
+            $from['tableSchemaID'] = $localKey;
         }
-        if($targetColumn === null || $targetColumn === '{primaryKey}'){
+        if($foreignKey === null) {
+            $target['tableSchemaID'] = (Helper::str_ends_with($from['tableSchema'], 's') ? \substr($from['tableSchema'], -1) : $from['tableSchema'])
+                . '_' . $from['tableSchemaID'];
+        } elseif ($foreignKey === '{primaryKey}') {
             if(empty($target['tableSchemaID'])){
                 throw new ModelRelationsException('To use relationships, the model must have a primary key column.');
             }
         }else{
-            $target['tableSchemaID'] = $targetColumn;
+            $target['tableSchemaID'] = $foreignKey;
         }
         $this->join($target['tableSchema'], ($from['tableSchema'] . '.' . $from['tableSchemaID'] . ' = ' . $target['tableSchema'] . '.' . $target['tableSchemaID']), $joinType);
+
         return $this;
     }
 
@@ -601,6 +585,37 @@ abstract class Model extends Database
         }
 
         return $data;
+    }
+
+    private function getModelTableNameAndPrimaryKeyColumn($model): array
+    {
+        $reflection = new \ReflectionClass($model);
+        if ($reflection->isSubclassOf(Model::class) === FALSE) {
+            throw new ModelRelationsException('The target class must be a subclass of \\InitPHP\\Database\\Model.');
+        }
+        if (\defined('PHP_VERSION_ID') && \PHP_VERSION_ID >= 80000) {
+            $tableReflection = $reflection->getProperty('table');
+            $primaryKeyReflection = $reflection->getProperty('primaryKey');
+            if (null === $tableName = $tableReflection->getDefaultValue()) {
+                $tableName = \strtolower($reflection->getShortName());
+            }
+            $primaryKey = $primaryKeyReflection->getDefaultValue();
+
+            return [
+                'tableSchema'      => $tableName,
+                'tableSchemaID'    => $primaryKey,
+            ];
+        }
+
+        /** @var $model Model */
+        if (!\is_object($model)) {
+            $model = $reflection->newInstance();
+        }
+
+        return [
+            'tableSchema'       => $model->getSchema(),
+            'tableSchemaID'     => $model->getSchemaID(),
+        ];
     }
 
 }

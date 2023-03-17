@@ -295,7 +295,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->from('post')
             ->andBetween('date', ['2022-05-07', 'CURDATE()']);
 
-        $expected = 'SELECT * FROM post WHERE date BETWEEN :date_start AND CURDATE()';
+        $expected = 'SELECT * FROM post WHERE date BETWEEN :date AND CURDATE()';
 
         $this->assertEquals($expected, $this->db->_readQuery());
         $this->db->reset();

@@ -7,15 +7,16 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.7
+ * @version     2.0.8
  * @link        https://www.muhammetsafak.com.tr
  */
 
 namespace InitPHP\Database;
 
 use \InitPHP\Database\Helpers\{Helper, Parameters};
+use \InitPHP\Database\Exceptions\ValueException;
 
-abstract class QueryBuilder
+class QueryBuilder
 {
 
     protected const STRUCTURE = [
@@ -55,8 +56,6 @@ abstract class QueryBuilder
         return $this->_STRUCTURE;
     }
 
-
-
     /**
      * @param string|Raw ...$columns
      * @return $this
@@ -66,34 +65,59 @@ abstract class QueryBuilder
         foreach ($columns as $column) {
             $this->_STRUCTURE['select'][] = (string)$column;
         }
+
         return $this;
     }
 
-    final public function selectCount(string $column, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectCount($column, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'COUNT(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectMax(string $column, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectMax($column, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'MAX(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectMin(string $column, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectMin($column, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'MIN(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectAvg(string $column, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectAvg($column, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'AVG(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
@@ -104,63 +128,116 @@ abstract class QueryBuilder
      */
     final public function selectAs($column, string $alias): self
     {
-        $this->_STRUCTURE['select'][] = (string)$column . ' AS ' . $alias;
+        $this->_STRUCTURE['select'][] = $column . ' AS ' . $alias;
         return $this;
     }
 
-    final public function selectUpper(string $column, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectUpper($column, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'UPPER(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectLower(string $column, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectLower($column, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'LOWER(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectLength(string $column, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectLength($column, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'LENGTH(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectMid(string $column, int $offset, int $length, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param int $offset
+     * @param int $length
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectMid($column, int $offset, int $length, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'MID(' . $column . ', ' . $offset . ', ' . $length . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectLeft(string $column, int $length, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param int $length
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectLeft($column, int $length, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'LEFT(' . $column . ', ' . $length . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectRight(string $column, int $length, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param int $length
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectRight($column, int $length, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'RIGHT(' . $column . ', ' . $length . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectDistinct(string $column, ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectDistinct($column, ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'DISTINCT(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectCoalesce(string $column, $default = '0', ?string $alias = null): self
+    /**
+     * @param string|Raw $column
+     * @param mixed $default
+     * @param string|null $alias
+     * @return $this
+     */
+    final public function selectCoalesce($column, $default = '0', ?string $alias = null): self
     {
         $this->_STRUCTURE['select'][] = 'COALESCE(' . $column . ', ' . $default . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
@@ -168,13 +245,24 @@ abstract class QueryBuilder
     {
         $this->_STRUCTURE['select'][] = 'SUM(' . $column . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
-    final public function selectConcat(?string $alias = null, string ...$columnOrStr): self
+    /**
+     * @param string|null $alias
+     * @param string|Raw ...$columnOrStr
+     * @return $this
+     */
+    final public function selectConcat(?string $alias = null, ...$columnOrStr): self
     {
+        foreach ($columnOrStr as &$item) {
+            $item = (string)$item;
+        }
+
         $this->_STRUCTURE['select'][] = 'CONCAT(' . \implode(', ', $columnOrStr) . ')'
             . ($alias !== null ? ' AS ' . $alias : '');
+
         return $this;
     }
 
@@ -183,6 +271,18 @@ abstract class QueryBuilder
      * @return $this
      */
     final public function from(...$tables): self
+    {
+        $this->_STRUCTURE['table'] = [];
+        $this->addFrom(...$tables);
+
+        return $this;
+    }
+
+    /**
+     * @param string|Raw ...$tables
+     * @return $this
+     */
+    final public function addFrom(...$tables): self
     {
         foreach ($tables as $table) {
             $table = (string)$table;
@@ -199,10 +299,8 @@ abstract class QueryBuilder
      */
     final public function table($table): self
     {
-        $table = (string)$table;
-        if(!\in_array($table, $this->_STRUCTURE['table'], true)){
-            $this->_STRUCTURE['table'][] = $table;
-        }
+        $this->_STRUCTURE['table'] = [(string)$table];
+
         return $this;
     }
 
@@ -223,23 +321,19 @@ abstract class QueryBuilder
 
     /**
      * @param string|Raw $table
-     * @param string|null $onStmt
+     * @param string|Raw|null $onStmt
      * @param string $type
      * @return $this
      */
-    final public function join($table, ?string $onStmt = null, string $type = 'INNER'): self
+    final public function join($table, $onStmt = null, string $type = 'INNER'): self
     {
-        if($table instanceof Raw){
-            $this->_STRUCTURE['join'][$table] = $table->get();
-            return $this;
-        }
-        if(!\is_string($table) || $onStmt === null){
-            throw new \InvalidArgumentException('');
-        }
+        $table = (string)$table;
+
         $type = \trim(\strtoupper($type));
         switch ($type) {
             case 'SELF' :
-                $this->table($table)->where(new Raw($onStmt));
+                $this->addFrom($table);
+                $onStmt !== null && $this->where((\is_string($onStmt) ? new Raw($onStmt) : $onStmt));
                 break;
             case 'NATURAL':
             case 'NATURAL JOIN':
@@ -251,59 +345,99 @@ abstract class QueryBuilder
         return $this;
     }
 
-    final public function selfJoin(string $table, string $onStmt): self
+    /**
+     * @param string|Raw $table
+     * @param string|Raw $onStmt
+     * @return $this
+     */
+    final public function selfJoin($table, $onStmt): self
     {
         return $this->join($table, $onStmt, 'SELF');
     }
 
-    final public function innerJoin(string $table, string $onStmt): self
+    /**
+     * @param string|Raw $table
+     * @param string|Raw $onStmt
+     * @return $this
+     */
+    final public function innerJoin($table, $onStmt): self
     {
         return $this->join($table, $onStmt, 'INNER');
     }
 
-    final public function leftJoin(string $table, string $onStmt): self
+    /**
+     * @param string|Raw $table
+     * @param string|Raw $onStmt
+     * @return $this
+     */
+    final public function leftJoin($table, $onStmt): self
     {
         return $this->join($table, $onStmt, 'LEFT');
     }
 
-    final public function rightJoin(string $table, string $onStmt): self
+    /**
+     * @param string|Raw $table
+     * @param string|Raw $onStmt
+     * @return $this
+     */
+    final public function rightJoin($table, $onStmt): self
     {
         return $this->join($table, $onStmt, 'RIGHT');
     }
 
-    final public function leftOuterJoin(string $table, string $onStmt): self
+    /**
+     * @param string|Raw $table
+     * @param string|Raw $onStmt
+     * @return $this
+     */
+    final public function leftOuterJoin($table, $onStmt): self
     {
         return $this->join($table, $onStmt, 'LEFT OUTER');
     }
 
-    final public function rightOuterJoin(string $table, string $onStmt): self
+    /**
+     * @param string|Raw $table
+     * @param string|Raw $onStmt
+     * @return $this
+     */
+    final public function rightOuterJoin($table, $onStmt): self
     {
         return $this->join($table, $onStmt, 'RIGHT OUTER');
     }
 
-    final public function naturalJoin(string $table): self
+    /**
+     * @param string|Raw $table
+     * @return $this
+     */
+    final public function naturalJoin($table): self
     {
-        return $this->join($table, '', 'NATURAL');
+        return $this->join($table, null, 'NATURAL');
     }
 
-    final public function orderBy(string $column, string $soft = 'ASC'): self
+    /**
+     * @param string|Raw $column
+     * @param string $soft [ASC|DESC]
+     * @return $this
+     */
+    final public function orderBy($column, string $soft = 'ASC'): self
     {
         $soft = \trim(\strtoupper($soft));
         if(!\in_array($soft, ['ASC', 'DESC'], true)){
             throw new \InvalidArgumentException('It can only sort as ASC or DESC.');
         }
-        $orderBy = \trim($column) . ' ' . $soft;
+        $orderBy = \trim((string)$column) . ' ' . $soft;
         if(!\in_array($orderBy, $this->_STRUCTURE['order_by'], true)){
             $this->_STRUCTURE['order_by'][] = $orderBy;
         }
+
         return $this;
     }
 
     /**
      * @param Raw|string $column
      * @param mixed $value
-     * @param string $mark
-     * @param string $logical
+     * @param string $mark [=|!=|>|<|>=|<=]
+     * @param string $logical [AND|OR]
      * @return $this
      */
     final public function where($column, $value = null, string $mark = '=', string $logical = 'AND'): self
@@ -312,15 +446,17 @@ abstract class QueryBuilder
         if(!\in_array($logical, ['AND', 'OR'], true)){
             throw new \InvalidArgumentException('Logical operator OR, AND, && or || it could be.');
         }
-        $this->_STRUCTURE['where'][$logical][] = ($column instanceof Raw) ? $column->get() : $this->whereOrHavingStatementPrepare($column, $value, $mark);
+
+        $this->_STRUCTURE['where'][$logical][] = $this->whereOrHavingStatementPrepare($column, $value, $mark);
+
         return $this;
     }
 
     /**
      * @param Raw|string $column
      * @param mixed $value
-     * @param string $mark
-     * @param string $logical
+     * @param string $mark [=|!=|>|<|>=|<=]
+     * @param string $logical [AND|OR]
      * @return $this
      */
     final public function having($column, $value = null, string $mark = '=', string $logical = 'AND'): self
@@ -329,276 +465,563 @@ abstract class QueryBuilder
         if(!\in_array($logical, ['AND', 'OR'], true)){
             throw new \InvalidArgumentException('Logical operator OR, AND, && or || it could be.');
         }
-        $this->_STRUCTURE['having'][$logical][] = ($column instanceof Raw) ? $column->get() : $this->whereOrHavingStatementPrepare($column, $value, $mark);
+        $this->_STRUCTURE['having'][$logical][] =$this->whereOrHavingStatementPrepare($column, $value, $mark);
         return $this;
     }
 
+    /**
+     * @param string|Raw $column
+     * @param mixed $value
+     * @param string $mark [=|!=|>|<|>=|<=]
+     * @return $this
+     */
     final public function andWhere($column, $value, string $mark = '='): self
     {
         return $this->where($column, $value, $mark, 'AND');
     }
 
+    /**
+     * @param string|Raw $column
+     * @param mixed $value
+     * @param string $mark [=|!=|>|<|>=|<=]
+     * @return $this
+     */
     final public function orWhere($column, $value, string $mark = '='): self
     {
         return $this->where($column, $value, $mark, 'OR');
     }
 
-    final public function between(string $column, array $values, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $values
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function between($column, $values, string $logical = 'AND'): self
     {
         return $this->where($column, $values, 'BETWEEN', $logical);
     }
 
-    final public function orBetween(string $column, array $values): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $values
+     * @return $this
+     */
+    final public function orBetween($column, $values): self
     {
         return $this->where($column, $values, 'BETWEEN', 'OR');
     }
 
-    final public function andBetween(string $column, array $values): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $values
+     * @return $this
+     */
+    final public function andBetween($column, $values): self
     {
         return $this->where($column, $values, 'BETWEEN', 'AND');
     }
 
-    final public function notBetween(string $column, array $values, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $values
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function notBetween($column, $values, string $logical = 'AND'): self
     {
         return $this->where($column, $values, 'NOTBETWEEN', $logical);
     }
 
-    final public function orNotBetween(string $column, array $values): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $values
+     * @return $this
+     */
+    final public function orNotBetween($column, $values): self
     {
         return $this->where($column, $values, 'NOTBETWEEN', 'OR');
     }
 
-    final public function andNotBetween(string $column, array $values): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $values
+     * @return $this
+     */
+    final public function andNotBetween($column, $values): self
     {
         return $this->where($column, $values, 'NOTBETWEEN', 'AND');
     }
 
-    final public function findInSet(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function findInSet($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'FINDINSET', $logical);
     }
 
-    final public function orFindInSet(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @return $this
+     */
+    final public function orFindInSet($column, $value): self
     {
         return $this->where($column, $value, 'FINDINSET', 'OR');
     }
 
-    final public function andFindInSet(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @return $this
+     */
+    final public function andFindInSet($column, $value): self
     {
         return $this->where($column, $value, 'FINDINSET', 'AND');
     }
 
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
     final public function notFindInSet(string $column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'NOTFINDINSET', $logical);
     }
 
-    final public function andNotFindInSet(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @return $this
+     */
+    final public function andNotFindInSet($column, $value): self
     {
         return $this->where($column, $value, 'NOTFINDINSET', 'AND');
     }
 
-    final public function orNotFindInSet(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @return $this
+     */
+    final public function orNotFindInSet($column, $value): self
     {
         return $this->where($column, $value, 'NOTFINDINSET', 'OR');
     }
 
-    final public function in(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function in($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'IN', $logical);
     }
 
-    final public function orIn(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @return $this
+     */
+    final public function orIn($column, $value): self
     {
         return $this->where($column, $value, 'IN', 'OR');
     }
 
-    final public function andIn(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @return $this
+     */
+    final public function andIn($column, $value): self
     {
         return $this->where($column, $value, 'IN', 'AND');
     }
 
-    final public function notIn(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function notIn($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'NOTIN', $logical);
     }
 
-    final public function orNotIn(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @return $this
+     */
+    final public function orNotIn($column, $value): self
     {
         return $this->where($column, $value, 'NOTIN', 'OR');
     }
 
-    final public function andNotIn(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param array|Raw|string $value
+     * @return $this
+     */
+    final public function andNotIn($column, $value): self
     {
         return $this->where($column, $value, 'NOTIN', 'AND');
     }
 
-    final public function regexp(string $column, string $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function regexp($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'REGEXP', $logical);
     }
 
-    final public function andRegexp(string $column, string $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function andRegexp($column, $value): self
     {
         return $this->where($column, $value, 'REGEXP', 'AND');
     }
 
-    final public function orRegexp(string $column, string $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function orRegexp($column, $value): self
     {
         return $this->where($column, $value, 'REGEXP', 'OR');
     }
 
-    final public function like(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function like($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'LIKE', $logical);
     }
 
-    final public function orLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function orLike($column, $value): self
     {
         return $this->where($column, $value, 'LIKE', 'OR');
     }
 
-    final public function andLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function andLike($column, $value): self
     {
         return $this->where($column, $value, 'LIKE', 'AND');
     }
 
-    final public function startLike(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function startLike($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'STARTLIKE', $logical);
     }
 
-    final public function orStartLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function orStartLike($column, $value): self
     {
         return $this->where($column, $value, 'STARTLIKE', 'OR');
     }
 
-    final public function andStartLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function andStartLike($column, $value): self
     {
         return $this->where($column, $value, 'STARTLIKE', 'AND');
     }
 
-    final public function endLike(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function endLike($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'ENDLIKE', $logical);
     }
 
-    final public function orEndLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function orEndLike($column, $value): self
     {
         return $this->where($column, $value, 'ENDLIKE', 'OR');
     }
 
-    final public function andEndLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function andEndLike($column, $value): self
     {
         return $this->where($column, $value, 'ENDLIKE', 'AND');
     }
 
-    final public function notLike(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function notLike($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'NOTLIKE', $logical);
     }
 
-    final public function orNotLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function orNotLike($column, $value): self
     {
         return $this->where($column, $value, 'NOTLIKE', 'OR');
     }
 
-    final public function andNotLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function andNotLike($column, $value): self
     {
         return $this->where($column, $value, 'NOTLIKE', 'AND');
     }
 
-    final public function startNotLike(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function startNotLike($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'STARTNOTLIKE', $logical);
     }
 
-    final public function orStartNotLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function orStartNotLike($column, $value): self
     {
         return $this->where($column, $value, 'STARTNOTLIKE', 'OR');
     }
 
-    final public function andStartNotLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function andStartNotLike($column, $value): self
     {
         return $this->where($column, $value, 'STARTNOTLIKE', 'AND');
     }
 
-    final public function endNotLike(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function endNotLike($column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'ENDNOTLIKE', $logical);
     }
 
-    final public function orEndNotLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function orEndNotLike($column, $value): self
     {
         return $this->where($column, $value, 'ENDNOTLIKE', 'OR');
     }
 
-    final public function andEndNotLike(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function andEndNotLike($column, $value): self
     {
         return $this->where($column, $value, 'ENDNOTLIKE', 'AND');
     }
 
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
     final public function soundex(string $column, $value, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'SOUNDEX', $logical);
     }
 
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
     final public function orSoundex(string $column, $value): self
     {
         return $this->where($column, $value, 'SOUNDEX', 'OR');
     }
 
-    final public function andSoundex(string $column, $value): self
+    /**
+     * @param string|Raw $column
+     * @param string|Raw $value
+     * @return $this
+     */
+    final public function andSoundex($column, $value): self
     {
         return $this->where($column, $value, 'SOUNDEX', 'AND');
     }
 
-    final public function is(string $column, $value, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param null $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function is($column, $value = null, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'IS', $logical);
     }
 
-    final public function orIs(string $column, $value = null): self
+    /**
+     * @param string|Raw $column
+     * @param null $value
+     * @return $this
+     */
+    final public function orIs($column, $value = null): self
     {
         return $this->where($column, $value, 'IS', 'OR');
     }
 
-    final public function andIs(string $column, $value = null): self
+    /**
+     * @param string|Raw $column
+     * @param null $value
+     * @return $this
+     */
+    final public function andIs($column, $value = null): self
     {
         return $this->where($column, $value, 'IS', 'AND');
     }
 
-    final public function isNot(string $column, $value = null, string $logical = 'AND'): self
+    /**
+     * @param string|Raw $column
+     * @param null $value
+     * @param string $logical [AND|OR]
+     * @return $this
+     */
+    final public function isNot($column, $value = null, string $logical = 'AND'): self
     {
         return $this->where($column, $value, 'ISNOT', $logical);
     }
 
-    final public function orIsNot(string $column, $value = null): self
+    /**
+     * @param string|Raw $column
+     * @param null $value
+     * @return $this
+     */
+    final public function orIsNot($column, $value = null): self
     {
         return $this->where($column, $value, 'ISNOT', 'OR');
     }
 
-    final public function andIsNot(string $column, $value = null): self
+    /**
+     * @param string|Raw $column
+     * @param null $value
+     * @return $this
+     */
+    final public function andIsNot($column, $value = null): self
     {
         return $this->where($column, $value, 'ISNOT', 'AND');
     }
 
+    /**
+     * @param int $offset
+     * @return $this
+     */
     final public function offset(int $offset = 0): self
     {
         $this->_STRUCTURE['offset'] = (int)\abs($offset);
         return $this;
     }
 
+    /**
+     * @param int $limit
+     * @return $this
+     */
     final public function limit(int $limit): self
     {
         $this->_STRUCTURE['limit'] = (int)\abs($limit);
+
         return $this;
     }
 
-    private function whereOrHavingStatementPrepare(string $column, $value, string $mark = '='): string
+    /**
+     * @param string|Raw $column
+     * @param mixed $value
+     * @param string $mark
+     * @return string
+     */
+    private function whereOrHavingStatementPrepare($column, $value, string $mark = '='): string
     {
         $mark = \trim($mark);
         if(\in_array($mark, ['=', '!=', '<=', '>=', '>', '<'], true)){
+            if ($value === null && ($column instanceof Raw)) {
+                return (string)$column;
+            }
+
             return $column . ' ' . $mark . ' '
                 . (Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($column, $value));
         }
@@ -617,32 +1040,40 @@ abstract class QueryBuilder
                 return $column . ' IS NOT ' . $value;
             case 'LIKE':
                 if(!Helper::isSQLParameterOrFunction($value)){
-                    $value = Parameters::add($column, '%' . $value . '%');
+                    $value = (substr($value, -1) == '%' || substr($value, 0, 1) == '%')
+                        ? $value
+                        : '%' . $value . '%';
+
+                    $value = Parameters::add($column, $value);
                 }
                 return $column . ' LIKE ' . $value;
             case 'STARTLIKE':
                 if(!Helper::isSQLParameterOrFunction($value)){
-                    $value = Parameters::add($column, '%' . $value);
+                    $value = Parameters::add($column, '%' . trim($value, '%'));
                 }
                 return $column . ' LIKE ' . $value;
             case 'ENDLIKE':
                 if(!Helper::isSQLParameterOrFunction($value)){
-                    $value = Parameters::add($column, $value . '%');
+                    $value = Parameters::add($column, trim($value, '%') . '%');
                 }
                 return $column . ' LIKE ' . $value;
             case 'NOTLIKE':
                 if(!Helper::isSQLParameterOrFunction($value)){
-                    $value = Parameters::add($column, '%' . $value . '%');
+                    $value = (substr($value, -1) == '%' || substr($value, 0, 1) == '%')
+                        ? $value
+                        : '%' . $value . '%';
+
+                    $value = Parameters::add($column, $value);
                 }
                 return $column . ' NOT LIKE ' . $value;
             case 'STARTNOTLIKE':
                 if(!Helper::isSQLParameterOrFunction($value)){
-                    $value = Parameters::add($column, '%' . $value);
+                    $value = Parameters::add($column, '%' . trim($value, '%'));
                 }
                 return $column . ' NOT LIKE ' . $value;
             case 'ENDNOTLIKE':
                 if(!Helper::isSQLParameterOrFunction($value)){
-                    $value = Parameters::add($column, $value . '%');
+                    $value = Parameters::add($column, trim($value, '%') . '%');
                 }
                 return $column . ' NOT LIKE ' . $value;
             case 'REGEXP':
@@ -652,37 +1083,38 @@ abstract class QueryBuilder
                 return $column . ' REGEXP ' . $value;
             case 'BETWEEN':
             case 'NOTBETWEEN':
-                $start = $value[0] ?? 0;
-                $end = $value[1] ?? 0;
-                if(!Helper::isSQLParameterOrFunction($start)){
-                    $start = Parameters::add(($column . '_start'), $start);
-                }
-                if(!Helper::isSQLParameterOrFunction($end)){
-                    $end = Parameters::add(($column . '_end'), $end);
+                if (\is_array($value) && \count($value) == 2) {
+                    $valueStmt = (Helper::isSQLParameterOrFunction($value[0]) ? $value[0] : Parameters::add($column, $value[0]))
+                    . ' AND '
+                    . (Helper::isSQLParameterOrFunction($value[1]) ? $value[1] : Parameters::add($column, $value[1]));
+                } elseif (Helper::isSQLParameterOrFunction($value)) {
+                    $valueStmt = (string)$value;
+                } else {
+                    throw new ValueException('An incorrect value was defined.');
                 }
                 return $column . ' '
                     . ($searchMark === 'NOTBETWEEN' ? 'NOT ':'')
-                    . 'BETWEEN ' . $start . ' AND ' . $end;
+                    . 'BETWEEN ' . $valueStmt;
             case 'IN':
             case 'NOTIN':
                 if(\is_array($value)){
                     $values = [];
                     foreach ($value as $val) {
                         if(\is_numeric($val)){
-                            $values[] = $val;
+                            !\in_array($val, $values) && $values[] = $val;
                             continue;
                         }
                         if($val === null){
-                            $values[] = 'NULL';
+                            !\in_array('NULL', $values) && $values[] = 'NULL';
                             continue;
                         }
                         $values[] = Helper::isSQLParameterOrFunction($val) ? $val : Parameters::add($column, $val);
                     }
                     $value = \implode(', ', \array_unique($values));
-                }elseif(\is_string($value) || \is_numeric($value)){
-                    $value = \is_numeric($value) || Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($column, \trim($value, '()'));
+                } elseif (Helper::isSQLParameterOrFunction($value)) {
+                    $value = (string)$value;
                 }else{
-                    throw new \InvalidArgumentException();
+                    throw new ValueException('An incorrect value was defined.');
                 }
                 return $column
                     . ($searchMark === 'NOTIN' ? ' NOT ' : ' ')
@@ -691,15 +1123,14 @@ abstract class QueryBuilder
             case 'NOTFINDINSET':
                 if(\is_array($value)){
                     $value = \implode(", ", $value);
-                }
-                if(!Helper::isSQLParameterOrFunction($value)){
+                } elseif (!Helper::isSQLParameterOrFunction($value)) {
                     $value = Parameters::add($column, $value);
                 }
                 return ($searchMark === 'NOTFINDINSET' ? 'NOT ' : '')
                     . 'FIND_IN_SET(' . $value . ', ' . $column . ')';
             case 'SOUNDEX':
-                if(!\is_string($value)){
-                    throw new \InvalidArgumentException('Only a string value can be defined for Soundex.');
+                if(!\is_string($value) && !($value instanceof Raw)){
+                    throw new ValueException('Only a string value can be defined for Soundex.');
                 }
                 if(!Helper::isSQLParameterOrFunction($value)){
                     $value = Parameters::add($column, $value);

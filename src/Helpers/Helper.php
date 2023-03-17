@@ -7,14 +7,20 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.7
+ * @version     2.0.8
  * @link        https://www.muhammetsafak.com.tr
  */
 
 namespace InitPHP\Database\Helpers;
 
+use InitPHP\Database\Exceptions\ModelRelationsException;
+use InitPHP\Database\Model;
+use InitPHP\Database\Raw;
+
 final class Helper
 {
+
+    private static array $modelInstance = [];
 
     public static function str_starts_with(string $haystack, string $needle): bool
     {
@@ -50,11 +56,11 @@ final class Helper
 
     public static function isSQLParameterOrFunction($value): bool
     {
-        return (\is_string($value)) && (
+        return ((\is_string($value)) && (
                 $value === '?'
                 || (bool)\preg_match('/^:[\w]+$/', $value)
                 || (bool)\preg_match('/^[a-zA-Z_]+\(\)$/', $value)
-            );
+            )) || ($value instanceof Raw);
     }
 
     public static function isSQLParameter($value): bool
@@ -89,6 +95,28 @@ final class Helper
             $camelCase .= \ucfirst($row);
         }
         return $camelCase;
+    }
+
+    public static function getModelInstance($model): Model
+    {
+        if ($model instanceof Model) {
+            $class = \get_class($model);
+            return self::$modelInstance[$class] = $model;
+        } elseif (\is_string($model) && \class_exists($model)) {
+            if (isset(self::$modelInstance[$model])) {
+                return self::$modelInstance[$model];
+            }
+        } else {
+            throw new \InvalidArgumentException();
+        }
+
+        $reflection = new \ReflectionClass($model);
+        if ($reflection->isSubclassOf(Model::class) === FALSE) {
+            throw new ModelRelationsException('The target class must be a subclass of \\InitPHP\\Database\\Model.');
+        }
+        $class = $reflection->getName();
+
+        return self::$modelInstance[$class] = $reflection->newInstance();
     }
 
 }

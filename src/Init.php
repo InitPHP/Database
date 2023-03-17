@@ -7,12 +7,11 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.7
+ * @version     2.0.8
  * @link        https://www.muhammetsafak.com.tr
  */
 
 
-declare(strict_types=1);
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Helpers/Helper.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Helpers/Parameters.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Helpers/Validation.php';
@@ -26,6 +25,7 @@ require_once __DIR__ . DIRECTORY_SEPARATOR . 'Exceptions/SQLQueryExecuteExceptio
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Exceptions/UpdatableException.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Exceptions/ValidationException.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Exceptions/WritableException.php';
+require_once __DIR__ . DIRECTORY_SEPARATOR . 'Exceptions/ValueException.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'QueryBuilder.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Facade/DB.php';
 require_once __DIR__ . DIRECTORY_SEPARATOR . 'Database.php';
