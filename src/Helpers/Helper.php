@@ -59,8 +59,9 @@ final class Helper
         return ((\is_string($value)) && (
                 $value === '?'
                 || (bool)\preg_match('/^:[\w]+$/', $value)
+                || (bool)\preg_match('/^[a-zA-Z_\.]+$/', $value)
                 || (bool)\preg_match('/^[a-zA-Z_]+\(\)$/', $value)
-            )) || ($value instanceof Raw);
+            )) || ($value instanceof Raw) || \is_int($value);
     }
 
     public static function isSQLParameter($value): bool

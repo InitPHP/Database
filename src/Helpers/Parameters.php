@@ -37,6 +37,9 @@ final class Parameters
 
     public static function add($key, $value): string
     {
+        if ($value === null) {
+            return 'NULL';
+        }
         if ($key instanceof Raw) {
             $key = \md5((string)$key);
         }

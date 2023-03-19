@@ -13,7 +13,9 @@
 
 namespace InitPHP\Database;
 
-use \InitPHP\Database\Helpers\{Helper, Parameters};
+use InitPHP\Database\Helpers\{Helper, Parameters, Validation};
+use InitPHP\Database\Exceptions\QueryBuilderException;
+use InitPHP\Database\Exceptions\QueryGeneratorException;
 use \InitPHP\Database\Exceptions\ValueException;
 
 class QueryBuilder
@@ -35,9 +37,16 @@ class QueryBuilder
         'order_by'      => [],
         'offset'        => null,
         'limit'         => null,
+        'set'           => [],
+        'on'            => [
+            'AND'           => [],
+            'OR'            => [],
+        ],
     ];
 
     protected array $_STRUCTURE = self::STRUCTURE;
+
+    protected bool $isOnlyDeletes = false;
 
     public function reset(): void
     {
@@ -321,7 +330,7 @@ class QueryBuilder
 
     /**
      * @param string|Raw $table
-     * @param string|Raw|null $onStmt
+     * @param string|Raw|\Closure|null $onStmt
      * @param string $type
      * @return $this
      */
@@ -329,11 +338,30 @@ class QueryBuilder
     {
         $table = (string)$table;
 
+        if ($onStmt instanceof \Closure) {
+            $queryBuilder = new self();
+            $queryBuilder->_STRUCTURE = self::STRUCTURE;
+            $onStmt = \call_user_func_array($onStmt, [$queryBuilder]);
+            if ($onStmt === null) {
+                if ($where = $queryBuilder->__generateWhereQuery()) {
+                    $this->where($this->raw($where));
+                }
+                if ($having = $queryBuilder->__generateHavingQuery()) {
+                    if (Helper::str_starts_with($having, ' HAVING ')) {
+                        $having = \substr($having, 8);
+                    }
+                    $this->having($this->raw($having));
+                }
+                $onStmt = $queryBuilder->__generateOnQuery();
+            }
+
+        }
+
         $type = \trim(\strtoupper($type));
         switch ($type) {
             case 'SELF' :
                 $this->addFrom($table);
-                $onStmt !== null && $this->where((\is_string($onStmt) ? new Raw($onStmt) : $onStmt));
+                $onStmt !== null && $this->where((\is_string($onStmt) ? $this->raw($onStmt) : $onStmt));
                 break;
             case 'NATURAL':
             case 'NATURAL JOIN':
@@ -442,7 +470,7 @@ class QueryBuilder
      */
     final public function where($column, $value = null, string $mark = '=', string $logical = 'AND'): self
     {
-        $logical = \str_replace(['&&', '||'], ['AND', 'OR'], \strtoupper($logical));
+        $logical = \strtoupper(\strtr($logical, ['&&' => 'AND', '||' => 'OR']));
         if(!\in_array($logical, ['AND', 'OR'], true)){
             throw new \InvalidArgumentException('Logical operator OR, AND, && or || it could be.');
         }
@@ -461,12 +489,71 @@ class QueryBuilder
      */
     final public function having($column, $value = null, string $mark = '=', string $logical = 'AND'): self
     {
-        $logical = \str_replace(['&&', '||'], ['AND', 'OR'], \strtoupper($logical));
+        $logical = \strtoupper(\strtr($logical, ['&&' => 'AND', '||' => 'OR']));
         if(!\in_array($logical, ['AND', 'OR'], true)){
             throw new \InvalidArgumentException('Logical operator OR, AND, && or || it could be.');
         }
-        $this->_STRUCTURE['having'][$logical][] =$this->whereOrHavingStatementPrepare($column, $value, $mark);
+
+        $this->_STRUCTURE['having'][$logical][] = $this->whereOrHavingStatementPrepare($column, $value, $mark);
+
         return $this;
+    }
+
+    final public function on($column, $value = null, string $mark = '=', string $logical = 'AND'): self
+    {
+        $logical = \strtoupper(\strtr($logical, ['&&' => 'AND', '||' => 'OR']));
+        if (!\in_array($logical, ['AND', 'OR'])) {
+            throw new \InvalidArgumentException('Logical operator OR, AND, && or || it could be.');
+        }
+
+        $this->_STRUCTURE['on'][$logical][] = $this->whereOrHavingStatementPrepare($column, $value, $mark);
+
+        return $this;
+    }
+
+    /**
+     * @param string|Raw|array $column
+     * @param mixed $value
+     * @param bool $strict
+     * @return $this
+     * @throws QueryBuilderException
+     */
+    final public function set($column, $value = null, bool $strict = true): self
+    {
+        return $this->addSet($column, $value, $strict);
+    }
+
+    /**
+     * @param string|Raw|array $column
+     * @param mixed $value
+     * @param bool $strict
+     * @return $this
+     * @throws QueryBuilderException
+     */
+    final public function addSet($column, $value = null, bool $strict = true): self
+    {
+        if (\is_array($column) && $value === null) {
+            $set = [];
+            foreach ($column as $name => $value) {
+                $this->checkSetData($name, $value, $strict);
+                $set[$name] = $value;
+            }
+            $this->_STRUCTURE['set'][] = $set;
+        } else {
+            $this->checkSetData($column, $value, $strict);
+            $this->_STRUCTURE['set'][][$column] = $value;
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string $column
+     * @return bool
+     */
+    public function isAllowedFields(string $column): bool
+    {
+        return !($this instanceof Database) || $this->isAllowedFields($column);
     }
 
     /**
@@ -1008,25 +1095,357 @@ class QueryBuilder
         return $this;
     }
 
+    final public function exceptDeletedData(): self
+    {
+        if (!($this instanceof Database)) {
+            return $this;
+        }
+        if (empty($this->getCredentials('deletedField'))) {
+            return $this;
+        }
+
+        return $this->isNot($this->getCredentials('deletedField'), null);
+    }
+
+    final public function onlyDeletedData(): self
+    {
+        if (!($this instanceof Database)) {
+            return $this;
+        }
+        if (empty($this->getCredentials('deletedField'))) {
+            return $this;
+        }
+
+        return $this->is($this->getCredentials('deletedField'), null);
+    }
+
+    final public function raw(string $rawQuery): Raw
+    {
+        return new Raw($rawQuery);
+    }
+
+    final public function generateInsertQuery(): string
+    {
+        if (!empty($this->_STRUCTURE['table'])) {
+            $table = \end($this->_STRUCTURE['table']);
+        } elseif ($this instanceof Database) {
+            $table = $this->getSchema();
+
+            $createdField = $this->getCredentials('createdField');
+            if (!empty($createdField)) {
+                $this->addSet($createdField, \date($this->getCredentials('timestampFormat')), false);
+            }
+        }
+
+        if (!isset($table)) {
+            throw new QueryGeneratorException('Table name not found when creating insert query.');
+        }
+
+        $columns = [];
+        $values = [];
+        $set = array_merge(...$this->_STRUCTURE['set']);
+
+        foreach ($set as $column => $value) {
+            $columns[] = $column;
+            $values[] = $value;
+        }
+        if (empty($columns)) {
+            throw new QueryGeneratorException('The data set for the insert could not be found.');
+        }
+
+        return 'INSERT INTO ' . $table . ' (' . \implode(', ', $columns) . ') VALUES (' . \implode(', ', $values) . ');';
+    }
+
+    final public function generateBatchInsertQuery(): string
+    {
+        $singleStartValue = [];
+        if (!empty($this->_STRUCTURE['table'])) {
+            $table = \end($this->_STRUCTURE['table']);
+        } elseif ($this instanceof Database) {
+            $table = $this->getSchema();
+
+            $createdField = $this->getCredentials('createdField');
+            if (!empty($createdField)) {
+                $singleStartValue = [
+                    $createdField => "'" . \date($this->getCredentials('timestampFormat')) . "'",
+                ];
+            }
+        }
+
+        if (!isset($table)) {
+            throw new QueryGeneratorException('Table name not found when creating insert query.');
+        }
+
+        $columns = \array_keys(\array_merge(...$this->_STRUCTURE['set']));
+
+        if (empty($columns)) {
+            throw new QueryGeneratorException('The data set for the insert could not be found.');
+        }
+
+        $values = [];
+        foreach ($this->_STRUCTURE['set'] as $set) {
+            $value = $singleStartValue;
+            foreach ($columns as $column) {
+                $value[$column] = $set[$column] ?? 'NULL';
+            }
+            $values[] = '(' . \implode(', ', $value) . ')';
+        }
+
+        return 'INSERT INTO ' . $table . ' (' . \implode(', ', $columns) . ') VALUES ' . \implode(', ', $values) . ';';
+    }
+
+    final public function generateSelectQuery(array $selector = [], array $conditions = []): string
+    {
+        if(!empty($selector)){
+            $this->select(...$selector);
+        }
+        if(!empty($conditions)){
+            foreach ($conditions as $column => $value) {
+                if (\is_string($column)) {
+                    $this->where($column, $value);
+                } else {
+                    $this->where($value);
+                }
+            }
+        }
+        if ($this instanceof Database) {
+            $table = $this->getSchema();
+        }
+        if (empty($this->_STRUCTURE['table']) && isset($table)) {
+            $this->_STRUCTURE['table'][] = $table;
+        }
+
+        if (empty($this->_STRUCTURE['table'])) {
+            throw new QueryGeneratorException('Table name not found.');
+        }
+        $this->__generateSoftDeleteQuery();
+
+        return 'SELECT '
+            . (empty($this->_STRUCTURE['select']) ? '*' : \implode(', ', $this->_STRUCTURE['select']))
+            . ' FROM '
+            . \implode(', ', $this->_STRUCTURE['table'])
+            . (!empty($this->_STRUCTURE['join']) ? ' ' . \implode(' ', $this->_STRUCTURE['join']) : '')
+            . ' WHERE '
+            . (($where = $this->__generateWhereQuery()) ? $where : '1')
+            . (!empty($this->_STRUCTURE['group_by']) ? ' GROUP BY ' . \implode(', ', $this->_STRUCTURE['group_by']) : '')
+            . ($this->__generateHavingQuery() ?? '')
+            . (!empty($this->_STRUCTURE['order_by']) ? ' ORDER BY ' . \implode(', ', $this->_STRUCTURE['order_by']) : '')
+            . ($this->__generateLimitQuery() ?? '');
+    }
+
+    final public function generateUpdateQuery(): string
+    {
+        $primaryKey = null;
+        if (!empty($this->_STRUCTURE['table'])) {
+            $table = \end($this->_STRUCTURE['table']);
+        } elseif ($this instanceof Database) {
+            $table = $this->getSchema();
+
+            $updatedField = $this->getCredentials('updatedField');
+            if (!empty($updatedField)) {
+                $this->addSet($updatedField, \date($this->getCredentials('timestampFormat')), false);
+            }
+            $primaryKey = $this->getSchemaID();
+        }
+        if (!isset($table)) {
+            throw new QueryGeneratorException('Table name not found.');
+        }
+
+        $set = array_merge(...$this->_STRUCTURE['set']);
+
+        $updateSet = [];
+        foreach ($set as $column => $value) {
+            if ($primaryKey !== null && $column === $primaryKey) {
+                $this->where($column, $value);
+                continue;
+            }
+            $updateSet[] = $column . ' = ' . $value;
+        }
+        if (empty($updateSet)) {
+            throw new QueryGeneratorException('The data set for the insert could not be found.');
+        }
+        $this->exceptDeletedData();
+
+        return 'UPDATE ' . $table . ' SET ' . \implode(', ', $updateSet)
+            . ' WHERE '
+            . (($where = $this->__generateWhereQuery()) ? $where : '1')
+            . ($this->__generateHavingQuery() ?? '')
+            . ($this->__generateLimitQuery() ?? '');
+    }
+
+    final public function generateUpdateBatchQuery(string $referenceColumn)
+    {
+        $primaryKey = null;
+        $update = [];
+        if (!empty($this->_STRUCTURE['table'])) {
+            $table = \end($this->_STRUCTURE['table']);
+        } elseif ($this instanceof Database) {
+            $table = $this->getSchema();
+
+            $updatedField = $this->getCredentials('updatedField');
+            if (!empty($updatedField)) {
+                $update[] = $updatedField . " = '" . \date($this->getCredentials('timestampFormat')) . "'";
+            }
+            $primaryKey = $this->getSchemaID();
+        }
+        if (!isset($table)) {
+            throw new QueryGeneratorException('Table name not found.');
+        }
+
+        $data = $this->_STRUCTURE['set'];
+
+        $updateData = [];
+        $columns = [];
+        $where = [];
+        foreach ($data as $set) {
+            if (!isset($set[$referenceColumn])) {
+                throw new QueryGeneratorException('The reference column does not exist in one or more of the set arrays.');
+            }
+            $setData = [];
+            foreach ($set as $key => $value) {
+                if ($primaryKey !== null && $key === $primaryKey) {
+                    continue;
+                }
+                if ($key == $referenceColumn) {
+                    $where[] = $value;
+                    continue;
+                }
+                $setData[$key] = $value;
+                if (!\in_array($key, $columns)) {
+                    $columns[] = $key;
+                }
+            }
+            $updateData[] = $setData;
+        }
+
+        foreach ($columns as $column) {
+            $syntax = $column . ' = CASE';
+            foreach ($updateData as $key => $values) {
+                if (!\array_key_exists($column, $values)) {
+                    continue;
+                }
+                $syntax .= ' WHEN ' . $referenceColumn . ' = '
+                    . (Helper::isSQLParameterOrFunction($where[$key]) ? $where[$key] : Parameters::add($referenceColumn, $where[$key]))
+                    . ' THEN '
+                    . $values[$column];
+            }
+            $update[] = $syntax . ' ELSE ' . $column . ' END';
+        }
+
+        $this->in($referenceColumn, $where)
+            ->exceptDeletedData();
+
+        return 'UPDATE ' . $table . ' SET ' . \implode(', ', $update)
+            . ' WHERE '
+            . (($where = $this->__generateWhereQuery()) ? $where : '1')
+            . ($this->__generateHavingQuery() ?? '')
+            . ($this->__generateLimitQuery() ?? '');
+    }
+
+    final public function generateDeleteQuery(): string
+    {
+        if (!empty($this->_STRUCTURE['table'])) {
+            $table = \end($this->_STRUCTURE['table']);
+        } elseif ($this instanceof Database) {
+            $table = $this->getSchema();
+        }
+        if (!isset($table)) {
+            throw new QueryGeneratorException('Table name not found.');
+        }
+
+        return 'DELETE FROM'
+            . ' '
+            . $table
+            . ' WHERE '
+            . (($where = $this->__generateWhereQuery()) !== null ? $where : '1')
+            . ($this->__generateHavingQuery() ?? '')
+            . ($this->__generateLimitQuery() ?? '');
+    }
+
+    protected function __generateHavingQuery(): ?string
+    {
+        $isAndEmpty = empty($this->_STRUCTURE['having']['AND']);
+        $isOrEmpty = empty($this->_STRUCTURE['having']['OR']);
+        if($isAndEmpty && $isOrEmpty){
+            return null;
+        }
+        return ' HAVING '
+            . (!$isAndEmpty ? \implode(' AND ', $this->_STRUCTURE['having']['AND']) : '')
+            . (!$isAndEmpty && !$isOrEmpty ? ' AND ' : '')
+            . (!$isOrEmpty ? \implode(' OR ', $this->_STRUCTURE['having']['OR']) : '');
+    }
+
+    protected function __generateWhereQuery(): ?string
+    {
+        $isAndEmpty = empty($this->_STRUCTURE['where']['AND']);
+        $isOrEmpty = empty($this->_STRUCTURE['where']['OR']);
+        if($isAndEmpty && $isOrEmpty){
+            return null;
+        }
+        return (!$isAndEmpty ? \implode(' AND ', $this->_STRUCTURE['where']['AND']) : '')
+            . (!$isAndEmpty && !$isOrEmpty ? ' AND ' : '')
+            . (!$isOrEmpty ? \implode(' OR ', $this->_STRUCTURE['where']['OR']) : '');
+    }
+
+    protected function __generateOnQuery(): ?string
+    {
+        $isAndEmpty = empty($this->_STRUCTURE['on']['AND']);
+        $isOrEmpty = empty($this->_STRUCTURE['on']['OR']);
+        if($isAndEmpty && $isOrEmpty){
+            return null;
+        }
+        return (!$isAndEmpty ? \implode(' AND ', $this->_STRUCTURE['on']['AND']) : '')
+            . (!$isAndEmpty && !$isOrEmpty ? ' AND ' : '')
+            . (!$isOrEmpty ? \implode(' OR ', $this->_STRUCTURE['on']['OR']) : '');
+    }
+
+    protected function __generateLimitQuery(): ?string
+    {
+        if($this->_STRUCTURE['limit'] === null && $this->_STRUCTURE['offset'] === null){
+            return null;
+        }
+        $sql = ' LIMIT ';
+        if($this->_STRUCTURE['offset'] !== null){
+            $sql .= $this->_STRUCTURE['offset'] . ', ';
+        }
+        $sql .= $this->_STRUCTURE['limit'] ?? '10000';
+        return $sql;
+    }
+
+    protected function __generateSoftDeleteQuery(bool $reset = true): void
+    {
+        if ($this->isOnlyDeletes) {
+            $this->onlyDeletedData();
+        } else {
+            $this->exceptDeletedData();
+        }
+        if ($reset) {
+            $this->isOnlyDeletes = false;
+        }
+    }
+
     /**
      * @param string|Raw $column
      * @param mixed $value
      * @param string $mark
      * @return string
+     * @throws ValueException
      */
     private function whereOrHavingStatementPrepare($column, $value, string $mark = '='): string
     {
         $mark = \trim($mark);
-        if(\in_array($mark, ['=', '!=', '<=', '>=', '>', '<'], true)){
-            if ($value === null && ($column instanceof Raw)) {
-                return (string)$column;
-            }
-
+        if ($value !== null && \in_array($mark, ['=', '!=', '<=', '>=', '>', '<'], true)) {
             return $column . ' ' . $mark . ' '
                 . (Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($column, $value));
         }
+
         $markUpperCase = \strtoupper($mark);
         $searchMark = \str_replace([' ', '_'], '', $markUpperCase);
+
+        if ($value === null && !\in_array($searchMark, ['IS', 'ISNOT'])) {
+            return (string)$column;
+        }
+
         switch ($searchMark) {
             case 'IS':
                 if(!Helper::isSQLParameterOrFunction($value)){
@@ -1100,12 +1519,16 @@ class QueryBuilder
                 if(\is_array($value)){
                     $values = [];
                     foreach ($value as $val) {
-                        if(\is_numeric($val)){
-                            !\in_array($val, $values) && $values[] = $val;
+                        if(\is_numeric($val) || \is_int($val)){
+                            if (!\in_array($val, $values)) {
+                                $values[] = $val;
+                            }
                             continue;
                         }
                         if($val === null){
-                            !\in_array('NULL', $values) && $values[] = 'NULL';
+                            if (!\in_array('NULL', $values)) {
+                                $values[] = 'NULL';
+                            }
                             continue;
                         }
                         $values[] = Helper::isSQLParameterOrFunction($val) ? $val : Parameters::add($column, $val);
@@ -1141,6 +1564,16 @@ class QueryBuilder
             return \strtoupper($matches[1]) . '(' . $matches[2] . ')';
         }
         return $column . ' ' . $mark . ' ' . Parameters::add($column, $value);
+    }
+
+    private function checkSetData (&$column, &$value, $strict): void
+    {
+        $allowedColumnsCheck = ($strict === TRUE) && ($this instanceof Database) && !($column instanceof Raw);
+        if ($allowedColumnsCheck && !$this->isAllowedFields($column)) {
+            throw new QueryBuilderException('"' . $column . '" is not allowed.');
+        }
+        $column = (string)$column;
+        $value = Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($column, $value);
     }
 
 }

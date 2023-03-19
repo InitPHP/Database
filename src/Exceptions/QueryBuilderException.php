@@ -1,6 +1,6 @@
 <?php
 /**
- * Exceptions/ValueException
+ * Exceptions/QueryBuilderException
  *
  * This file is part of InitPHP Database.
  *
@@ -13,6 +13,6 @@
 
 namespace InitPHP\Database\Exceptions;
 
-class ValueException extends QueryBuilderException
+class QueryBuilderException extends \Exception
 {
 }
