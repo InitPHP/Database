@@ -7,7 +7,7 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.8
+ * @version     2.1
  * @link        https://www.muhammetsafak.com.tr
  */
 
@@ -59,7 +59,7 @@ final class Helper
         return ((\is_string($value)) && (
                 $value === '?'
                 || (bool)\preg_match('/^:[\w]+$/', $value)
-                || (bool)\preg_match('/^[a-zA-Z_\.]+$/', $value)
+                || (bool)\preg_match('/^[a-zA-Z_]+[\.]+[a-zA-Z_]+$/', $value)
                 || (bool)\preg_match('/^[a-zA-Z_]+\(\)$/', $value)
             )) || ($value instanceof Raw) || \is_int($value);
     }
