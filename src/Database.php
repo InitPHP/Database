@@ -15,7 +15,9 @@ namespace InitPHP\Database;
 
 use InitPHP\Database\Utils\{Pagination,
     Datatables};
-use \InitPHP\Database\Exceptions\{WritableException,
+use InitPHP\Database\Exceptions\{QueryBuilderException,
+    QueryGeneratorException,
+    WritableException,
     ReadableException,
     UpdatableException,
     DeletableException,
@@ -73,7 +75,6 @@ class Database extends QueryBuilder
         'testMode'  => false,
     ];
 
-    private bool $_isOnlyDeletes = false;
 
     private array $_errors = [];
 
@@ -103,6 +104,11 @@ class Database extends QueryBuilder
     {
         $this->_credentials = \array_merge($this->_credentials, $credentials);
         return $this;
+    }
+
+    final public function getCredentials(?string $key = null)
+    {
+        return ($key === null) ? $this->_credentials : ($this->_credentials[$key] ?? null);
     }
 
     final public function isError(): bool
@@ -256,11 +262,6 @@ class Database extends QueryBuilder
         return $res;
     }
 
-    final public function raw(string $rawQuery): Raw
-    {
-        return new Raw($rawQuery);
-    }
-
     final public function connection(array $credentials = []): self
     {
         return new self($credentials);
@@ -282,7 +283,7 @@ class Database extends QueryBuilder
             return 'NULL';
         }
         if(\is_string($value)){
-            $value = \str_replace("\\", "", \trim($value, "' \\\t\n\r\0\x0B"));
+            $value = \str_replace("\\", "", \trim(\stripslashes($value), "' \\\t\n\r\0\x0B"));
             return "'" . \str_replace("'", "\\'", $value) . "'";
         }
         if(\is_object($value)){
@@ -385,103 +386,97 @@ class Database extends QueryBuilder
     final public function insertId(): int
     {
         $id = $this->getPDO()->lastInsertId();
+
         return $id === FALSE ? 0 : (int)$id;
     }
 
     /**
      * @param string|null $table
      * @return Result
+     * @throws QueryGeneratorException
      */
     final public function get(?string $table = null): Result
     {
         if(!empty($table)){
-            $this->from($table);
+            $this->addFrom($table);
         }
-        $this->_deleteFieldBuild();
-        $res = $this->query($this->_readQuery());
+        $res = $this->query($this->generateSelectQuery());
         $this->reset();
+
         return $res;
     }
 
     /**
-     * @param array $set
+     * @param array|null $set
      * @return bool
+     * @throws QueryBuilderException
+     * @throws QueryGeneratorException
      */
-    public function create(array $set)
+    public function create(?array $set = null)
     {
         if($this->_credentials['writable'] === FALSE){
             throw new WritableException('');
         }
-        $isCreatedField = !empty($this->_credentials['createdField']);
-        if($isCreatedField){
-            $createdFieldParameterName = Parameters::add($this->_credentials['createdField'], \date($this->_credentials['timestampFormat']));
-        }
-        $data = [];
-        if(\count($set) === \count($set, \COUNT_RECURSIVE)){
+
+        if($set !== null && \count($set) === \count($set, \COUNT_RECURSIVE)){
             $this->_validation->setData($set);
             foreach ($set as $column => $value) {
                 if($this->_validation->validation($column, null) === FALSE){
                     $this->_errors[] = $this->_validation->getError();
                     return false;
                 }
-                $data[$column] = $value;
-            }
-            if(empty($data)){
-                return false;
-            }
-            if($isCreatedField){
-                $data[$this->_credentials['createdField']] = $createdFieldParameterName;
+                $this->set($column, $value);
             }
         }
 
-        $res = $this->query($this->_insertQuery($data));
+        $res = $this->query($this->generateInsertQuery());
         $this->reset();
+
         return $res->numRows() > 0;
     }
 
     /**
-     * @param array $set
+     * @param array|null $set
      * @return bool
+     * @throws QueryBuilderException
+     * @throws QueryGeneratorException
      */
-    public function insert(array $set)
+    public function insert(?array $set = null)
     {
         return $this->create($set);
     }
 
     /**
-     * @param array $set
+     * @param array|null $set
      * @return bool
+     * @throws QueryBuilderException
+     * @throws QueryGeneratorException
      */
-    public function createBatch(array $set)
+    public function createBatch(?array $set = null)
     {
         if($this->_credentials['writable'] === FALSE){
             throw new WritableException('');
         }
-        $isCreatedField = !empty($this->_credentials['createdField']);
-        if($isCreatedField){
-            $createdFieldParameterName = Parameters::add($this->_credentials['createdField'], \date($this->_credentials['timestampFormat']));
-        }
-        $data = [];
-        $i = 0;
-        foreach ($set as $row) {
-            $data[$i] = [];
-            $this->_validation->setData($row);
-            foreach ($row as $column => $value) {
-                if($this->_validation->validation($column, null) === FALSE){
-                    $this->_errors[] = $this->_validation->getError();
-                    return false;
+
+        if ($set !== null && \count($set) !== \count($set, \COUNT_RECURSIVE)) {
+            foreach ($set as $row) {
+                $data = [];
+                $this->_validation->setData($row);
+                foreach ($row as $column => $value) {
+                    if ($this->_validation->validation($column, null) === FALSE) {
+                        $this->_errors[] = $this->_validation->getError();
+                        return false;
+                    }
+                    $data[$column] = $value;
                 }
-                $data[$i][$column] = $value;
+                if (empty($data)) {
+                    continue;
+                }
+                $this->set($data);
             }
-            if(empty($data[$i])){
-                continue;
-            }
-            if($isCreatedField){
-                $data[$i][$this->_credentials['createdField']] = $createdFieldParameterName;
-            }
-            ++$i;
         }
-        $res = $this->query($this->_insertBatchQuery($data));
+
+        $res = $this->query($this->generateBatchInsertQuery());
         $this->reset();
 
         return $res->numRows() > 0;
@@ -491,6 +486,8 @@ class Database extends QueryBuilder
     /**
      * @param array $set
      * @return bool
+     * @throws QueryBuilderException
+     * @throws QueryGeneratorException
      */
     public function insertBatch(array $set)
     {
@@ -508,9 +505,12 @@ class Database extends QueryBuilder
         if($this->_credentials['readable'] === FALSE){
             throw new ReadableException('');
         }
-        $this->_readQueryHandler($selector, $conditions, $parameters);
-        $res = $this->query($this->_readQuery());
+        Parameters::merge($parameters);
+        $query = $this->generateSelectQuery($selector, $conditions);
+
+        $res = $this->query($query);
         $this->reset();
+
         return $res;
     }
 
@@ -519,101 +519,93 @@ class Database extends QueryBuilder
      * @param array $conditions
      * @param array $parameters
      * @return Result
+     * @throws QueryGeneratorException
      */
     public function readOne(array $selector = [], array $conditions = [], array $parameters = [])
     {
         if($this->_credentials['readable'] === FALSE){
             throw new ReadableException('');
         }
-        $this->limit(1);
-        $this->_readQueryHandler($selector, $conditions, $parameters);
-        $res = $this->query($this->_readQuery());
+        Parameters::merge($parameters);
+        $query = $this->limit(1)
+            ->generateSelectQuery($selector, $conditions);
+
+        $res = $this->query($query);
         $this->reset();
+
         return $res;
     }
 
     /**
-     * @param array $set
+     * @param array|null $set
      * @return bool
+     * @throws QueryBuilderException
+     * @throws QueryGeneratorException
      */
-    public function update(array $set)
+    public function update(?array $set = null)
     {
         if($this->_credentials['updatable'] === FALSE){
             throw new UpdatableException('');
         }
-        $schemaID = null;
-        if(!empty($this->getSchemaID()) && isset($set[$this->getSchemaID()])){
-            $schemaID = $set[$this->getSchemaID()];
-            $this->where($this->getSchemaID(), $schemaID);
-            unset($set[$this->getSchemaID()]);
-        }
-        if(empty($set)){
-            return false;
-        }
-        $this->_validation->setData($set);
-        $data = [];
-        foreach($set as $column => $value){
-            if($this->_validation->validation($column, $schemaID) === FALSE){
-                $this->_errors[] = $this->_validation->getError();
-                return false;
-            }
-            $data[$column] = $value;
-        }
-        if(!empty($this->_credentials['updatedField'])){
-            $data[$this->_credentials['updatedField']] = \date($this->_credentials['timestampFormat']);
-        }
-        $res = $this->query($this->_updateQuery($data));
-        $this->reset();
-
-        return $res->numRows() > 0;
-    }
-
-    /**
-     * @param array $set
-     * @param string $referenceColumn
-     * @return bool
-     */
-    public function updateBatch(array $set, string $referenceColumn)
-    {
-        if($this->_credentials['updatable'] === FALSE){
-            throw new UpdatableException('');
-        }
-        $schemaID = $this->getSchemaID();
-
-        $results = [];
-        $setUpdate = [];
-
-        foreach ($set as $data) {
-            if(!\is_array($data) || \array_key_exists($referenceColumn, $data)){
-                continue;
-            }
-
-            $setUpdate[] = $data;
-            $this->_validation->setData($data);
-            foreach ($data as $column => $value) {
-                if($column == $referenceColumn){
-                    continue;
-                }
-                if($this->_validation->validation($column, $schemaID) === FALSE){
+        if ($set !== null) {
+            $schemaID = $this->getSchemaID();
+            $this->_validation->setData($set);
+            foreach ($set as $column => $value) {
+                if ($this->_validation->validation($column, $schemaID) === FALSE) {
                     $this->_errors[] = $this->_validation->getError();
                     return false;
                 }
             }
-
-            if(!empty($this->_credentials['updatedField'])){
-                $setUpdate[$this->_credentials['updatedField']] = \date($this->_credentials['timestampFormat']);
-            }
+            $this->set($set);
         }
 
-        $res = $this->query($this->_updateBatchQuery($setUpdate, $referenceColumn));
+        $res = $this->query($this->generateUpdateQuery());
         $this->reset();
 
         return $res->numRows() > 0;
     }
 
     /**
+     * @param string $referenceColumn
+     * @param array|null $set
+     * @return bool
+     * @throws Exceptions\QueryBuilderException
+     * @throws Exceptions\QueryGeneratorException
+     */
+    public function updateBatch(string $referenceColumn, ?array $set = null)
+    {
+        if($this->_credentials['updatable'] === FALSE){
+            throw new UpdatableException('');
+        }
+
+        if ($set !== null) {
+            foreach ($set as $data) {
+                $this->_validation->setData($data);
+                foreach ($data as $column => $value) {
+                    if (\in_array($column, [$this->getSchemaID(), $referenceColumn])) {
+                        continue;
+                    }
+                    if ($this->_validation->validation($column, $this->getSchemaID()) === FALSE) {
+                        $this->_errors[] = $this->_validation->getError();
+                        return false;
+                    }
+                }
+                $this->set($data);
+            }
+        }
+
+        $res = $this->query($this->generateUpdateBatchQuery($referenceColumn));
+        $this->reset();
+
+        return $res->numRows() > 0;
+    }
+
+
+    /**
      * @param array $conditions
      * @return bool
+     * @throws QueryBuilderException
+     * @throws QueryGeneratorException
      */
     public function delete(array $conditions = [])
     {
@@ -621,25 +613,29 @@ class Database extends QueryBuilder
             throw new DeletableException('');
         }
         foreach ($conditions as $column => $value) {
-            $this->where($column, $value);
+            if (\is_string($column)) {
+                $this->where($column, $value);
+            } else {
+                $this->where($value);
+            }
         }
         if(!empty($this->_credentials['deletedField'])){
-            if($this->_isOnlyDeletes !== FALSE){
+            if($this->isOnlyDeletes !== FALSE){
                 $this->isNot($this->_credentials['deletedField'], null);
-                $query = $this->_deleteQuery();
-                $this->_isOnlyDeletes = false;
+                $query = $this->generateDeleteQuery();
+                $this->isOnlyDeletes = false;
             }else{
-                $this->is($this->_credentials['deletedField'], null);
-                $query = $this->_updateQuery([
-                    $this->_credentials['deletedField'] => \date($this->_credentials['timestampFormat'])
-                ]);
+                $this->is($this->_credentials['deletedField'], null)
+                    ->set($this->_credentials['deletedField'], \date($this->_credentials['timestampFormat']), false);
+                $query = $this->generateUpdateQuery();
             }
         }else{
-            $query = $this->_deleteQuery();
+            $query = $this->generateDeleteQuery();
         }
         $res = $this->query($query);
 
         $this->reset();
+
         return $res->numRows() > 0;
     }
 
@@ -648,11 +644,20 @@ class Database extends QueryBuilder
      * @param int $offset
      * @return Result
      */
-    public function all(int $limit = 100, int $offset = 0)
+    public function all(int $limit = 100, int $offset = 0): Result
     {
         return $this->limit($limit)
                 ->offset($offset)
                 ->read();
+    }
+
+    /**
+     * @return Result
+     * @throws QueryGeneratorException
+     */
+    public function first()
+    {
+        return $this->readOne();
     }
 
     public function group(\Closure $group, string $logical = 'AND'): self
@@ -667,13 +672,11 @@ class Database extends QueryBuilder
 
         \call_user_func_array($group, [$clone]);
 
-        $where = $clone->_whereQuery();
-        if($where !== ''){
+        if($where = $clone->__generateWhereQuery()){
             $this->_STRUCTURE['where'][$logical][] = '(' . $where . ')';
         }
 
-        $having = $clone->_havingQuery();
-        if($having !== ''){
+        if($having = $clone->__generateHavingQuery()){
             $this->_STRUCTURE['having'][$logical][] = '(' . $having . ')';
         }
         unset($clone);
@@ -682,13 +685,15 @@ class Database extends QueryBuilder
 
     public function onlyDeleted(): self
     {
-        $this->_isOnlyDeletes = true;
+        $this->isOnlyDeletes = true;
+
         return $this;
     }
 
     public function onlyUndeleted(): self
     {
-        $this->_isOnlyDeletes = false;
+        $this->isOnlyDeletes = false;
+
         return $this;
     }
 
@@ -700,15 +705,16 @@ class Database extends QueryBuilder
     public function count(): int
     {
         $select = $this->_STRUCTURE['select'];
-        $this->_STRUCTURE['select'][] = 'COUNT(*) AS row_count';
-        $this->_deleteFieldBuild(false);
+        $this->_STRUCTURE['select'] = ['COUNT(*) AS row_count'];
+        $this->__generateSoftDeleteQuery(false);
         $parameters = Parameters::get(false);
-        $res = $this->query($this->_readQuery());
+        $res = $this->query($this->generateSelectQuery());
         $count = $res->toArray()['row_count'] ?? 0;
         unset($res);
         Parameters::merge($parameters);
         $this->_STRUCTURE['select'] = $select;
-        return $count;
+
+        return (int)$count;
     }
 
     public function pagination(int $page = 1, int $per_page_limit = 10, string $link = '?page={page}'): Pagination
@@ -716,7 +722,7 @@ class Database extends QueryBuilder
         $total_row = $this->count();
         $this->offset(($page - 1) * $per_page_limit)
             ->limit($per_page_limit);
-        $res = $this->query($this->_readQuery());
+        $res = $this->query($this->generateSelectQuery());
         $this->reset();
 
         return new Pagination($res, $page, $per_page_limit, $total_row, $link);
@@ -727,196 +733,9 @@ class Database extends QueryBuilder
         return (new Datatables($this, $columns, $method))->__toString();
     }
 
-    public function _readQuery(): string
+    final public function isAllowedFields(string $column): bool
     {
-        if($this->getSchema() !== null){
-            $this->table($this->getSchema());
-        }
-        $where = $this->_whereQuery();
-        if($where !== ''){
-            $where = ' WHERE ' . $where;
-        }else{
-            $where = ' WHERE 1';
-        }
-        return 'SELECT '
-            . (empty($this->_STRUCTURE['select']) ? '*' : \implode(', ', $this->_STRUCTURE['select']))
-            . ' FROM ' . \implode(', ', $this->_STRUCTURE['table'])
-            . (!empty($this->_STRUCTURE['join']) ? ' ' . \implode(', ', $this->_STRUCTURE['join']) : '')
-            . $where
-            . $this->_havingQuery()
-            . (!empty($this->_STRUCTURE['group_by']) ? ' GROUP BY ' . \implode(', ', $this->_STRUCTURE['group_by']) : '')
-            . (!empty($this->_STRUCTURE['order_by']) ? ' ORDER BY ' . \implode(', ', $this->_STRUCTURE['order_by']) : '')
-            . $this->_limitQuery();
-    }
-
-    public function _insertQuery(array $data): string
-    {
-        $sql = 'INSERT INTO'
-            . ' '
-            . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']));
-        $columns = [];
-        $values = [];
-
-        foreach ($data as $column => $value) {
-            $column = \trim($column);
-            if($this->_credentials['allowedFields'] !== null && !\in_array($column, $this->_credentials['allowedFields'])){
-                continue;
-            }
-            $columns[] = $column;
-            $values[] = Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($column, $value);
-        }
-        if(empty($columns)){
-            return '';
-        }
-        return $sql
-            . ' (' . \implode(', ', $columns) . ') VALUES (' . \implode(', ', $values) . ');';
-    }
-
-    public function _insertBatchQuery($data): string
-    {
-        $sql = 'INSERT INTO'
-            . ' '
-            . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']));
-        $columns = [];
-        $values = [];
-
-        foreach ($data as &$row) {
-            $value = [];
-            foreach ($row as $column => $val) {
-                $column = \trim($column);
-                if($this->_credentials['allowedFields'] !== null && !\in_array($column, $this->_credentials['allowedFields'], true)){
-                    continue;
-                }
-                if(!\in_array($column, $columns, true)){
-                    $columns[] = $column;
-                }
-                $value[$column] = Helper::isSQLParameterOrFunction($val) ? $val : Parameters::add($column, $val);
-            }
-            $values[] = $value;
-        }
-
-        $multiValues = [];
-        foreach ($values as $value) {
-            $tmpValue = $value;
-            $value = [];
-            foreach ($columns as $column) {
-                $value[$column] = $tmpValue[$column] ?? 'NULL';
-            }
-            $multiValues[] = '(' . \implode(', ', $value) . ')';
-        }
-
-        return $sql . ' (' . \implode(', ', $columns) . ') VALUES '
-            . \implode(', ', $multiValues) . ';';
-    }
-
-    public function _updateQuery(array $data): string
-    {
-        $update = [];
-        foreach ($data as $column => $value) {
-            if($this->getSchemaID() === $column){
-                continue;
-            }
-            if($this->_credentials['allowedFields'] !== null && !\in_array($column, $this->_credentials['allowedFields'])){
-                continue;
-            }
-            $update[] = $column . ' = '
-                . (Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($column, $value));
-        }
-        if(empty($update)){
-            return '';
-        }
-        $schemaID = $this->getSchemaID();
-        if($schemaID !== null && isset($data[$schemaID])){
-            $this->where($schemaID, $data[$schemaID]);
-        }
-        $where = $this->_whereQuery();
-        if($where !== ''){
-            $where = ' WHERE ' . $where;
-        }else{
-            $where = ' WHERE 1';
-        }
-        return 'UPDATE '
-            . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']))
-            . ' SET '
-            . \implode(', ', $update)
-            . $where
-            . $this->_havingQuery()
-            . $this->_limitQuery();
-    }
-
-    public function _updateBatchQuery(array $data, $referenceColumn): string
-    {
-        $updateData = []; $columns = []; $where = [];
-        $schemaID = $this->getSchemaID();
-        foreach ($data as $set) {
-            if(!\is_array($set) || !isset($set[$referenceColumn])){
-                continue;
-            }
-            $setData = [];
-            foreach ($set as $key => $value) {
-                if($key === $schemaID){
-                    continue;
-                }
-                if($this->_credentials['allowedFields'] !== null && $key != $referenceColumn && !\in_array($key, $this->_credentials['allowedFields'])){
-                    continue;
-                }
-                if($key == $referenceColumn){
-                    $where[] = $value;
-                    continue;
-                }
-                $setData[$key] = Helper::isSQLParameterOrFunction($value) ? $value : Parameters::add($key, $value);
-                if(!\in_array($key, $columns)){
-                    $columns[] = $key;
-                }
-            }
-            $updateData[] = $setData;
-        }
-
-        $update = [];
-        foreach ($columns as $column) {
-            $syntax = $column . ' = CASE';
-            foreach ($updateData as $key => $values) {
-                if(!\array_key_exists($column, $values)){
-                    continue;
-                }
-                $syntax .= ' WHEN ' . $referenceColumn . ' = '
-                    . (Helper::isSQLParameterOrFunction($where[$key]) ? $where[$key] : Parameters::add($referenceColumn, $where[$key]))
-                    . ' THEN '
-                    . $values[$column];
-            }
-            $syntax .= ' ELSE ' . $column . ' END';
-            $update[] = $syntax;
-        }
-        $this->in($referenceColumn, $where);
-        $where = $this->_whereQuery();
-        if($where !== ''){
-            $where = ' WHERE ' . $where;
-        }else{
-            $where = ' WHERE 1';
-        }
-        return 'UPDATE '
-            . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']))
-            . ' SET '
-            . \implode(', ', $update)
-            . $where
-            . $this->_havingQuery()
-            . $this->_limitQuery();
-    }
-
-    public function _deleteQuery(): string
-    {
-        $where = $this->_whereQuery();
-        if($where !== ''){
-            $where = ' WHERE ' . $where;
-        }else{
-            $where = ' WHERE 1';
-        }
-        return 'DELETE FROM'
-            . ' '
-            . (empty($this->_STRUCTURE['table']) ? $this->getSchema() : end($this->_STRUCTURE['table']))
-            . $where
-            . $this->_havingQuery()
-            . $this->_limitQuery();
+        return empty($this->_credentials['allowedFields']) || \in_array($column, $this->_credentials['allowedFields']);
     }
 
     protected function _logCreate(string $message): void
@@ -944,72 +763,6 @@ class Database extends QueryBuilder
         }
         if(\is_object($this->_credentials['log']) && \method_exists($this->_credentials['log'], 'critical')){
             $this->_credentials['log']->critical($message);
-        }
-    }
-
-    private function _whereQuery(): string
-    {
-        $isAndEmpty = empty($this->_STRUCTURE['where']['AND']);
-        $isOrEmpty = empty($this->_STRUCTURE['where']['OR']);
-        if($isAndEmpty && $isOrEmpty){
-            return '';
-        }
-        return (!$isAndEmpty ? \implode(' AND ', $this->_STRUCTURE['where']['AND']) : '')
-            . (!$isAndEmpty && !$isOrEmpty ? ' AND ' : '')
-            . (!$isOrEmpty ? \implode(' OR ', $this->_STRUCTURE['where']['OR']) : '');
-    }
-
-    private function _havingQuery(): string
-    {
-        $isAndEmpty = empty($this->_STRUCTURE['having']['AND']);
-        $isOrEmpty = empty($this->_STRUCTURE['having']['OR']);
-        if($isAndEmpty && $isOrEmpty){
-            return '';
-        }
-        return ' HAVING '
-            . (!$isAndEmpty ? \implode(' AND ', $this->_STRUCTURE['having']['AND']) : '')
-            . (!$isAndEmpty && !$isOrEmpty ? ' AND ' : '')
-            . (!$isOrEmpty ? \implode(' OR ', $this->_STRUCTURE['having']['OR']) : '');
-    }
-
-    private function _limitQuery(): string
-    {
-        if($this->_STRUCTURE['limit'] === null && $this->_STRUCTURE['offset'] === null){
-            return '';
-        }
-        $sql = ' LIMIT ';
-        if($this->_STRUCTURE['offset'] !== null){
-            $sql .= $this->_STRUCTURE['offset'] . ', ';
-        }
-        $sql .= $this->_STRUCTURE['limit'] ?? '10000';
-        return $sql;
-    }
-
-    private function _readQueryHandler(array $selector = [], array $conditions = [], array $parameters = []): void
-    {
-        if(!empty($selector)){
-            $this->select(...$selector);
-        }
-        if(!empty($conditions)){
-            foreach ($conditions as $column => $value) {
-                $this->where($column, $value);
-            }
-        }
-        $this->_deleteFieldBuild();
-    }
-
-    private function _deleteFieldBuild(bool $reset = true): void
-    {
-        if(empty($this->_credentials['deletedField'])){
-            return;
-        }
-        if($this->_isOnlyDeletes === FALSE){
-            $this->is($this->_credentials['deletedField'], null);
-        }else{
-            $this->isNot($this->_credentials['deletedField'], null);
-        }
-        if($reset !== FALSE){
-            $this->_isOnlyDeletes = false;
         }
     }
 

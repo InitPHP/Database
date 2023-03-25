@@ -15,6 +15,7 @@ namespace InitPHP\Database\Helpers;
 
 use InitPHP\Database\Database;
 use InitPHP\Database\Exceptions\ValidationException;
+use InitPHP\Database\Raw;
 
 final class Validation
 {
@@ -109,6 +110,9 @@ final class Validation
         }
 
         $data = $this->data[$column] ?? null;
+        if ($data instanceof Raw) {
+            return true;
+        }
 
         if(Helper::isSQLParameter($data)){
             $data = Parameters::getParam($data);
