@@ -7,9 +7,10 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.8
+ * @version     2.1
  * @link        https://www.muhammetsafak.com.tr
  */
+declare(strict_types=1);
 
 namespace InitPHP\Database;
 
@@ -226,6 +227,7 @@ abstract class Model extends Database
         $credentials['updatable'] = $this->updatable ?? true;
         $credentials['deletable'] = $this->deletable ?? true;
         $credentials['writable'] = $this->writable ?? true;
+        $credentials['return'] = $this->return ?? self::ENTITY;
         parent::__construct($credentials);
     }
 

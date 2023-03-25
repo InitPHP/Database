@@ -263,19 +263,6 @@ class Posts extends \InitPHP\Database\Model
 {
 
     /**
-    * Only if you don't have global connectivity.
-    * 
-    * @var array|string[] 
-    */
-    protected array $connection = [
-        'dsn'           => '', // Database connection address.
-        'username'      => '', // Username with required privileges in the database.
-        'password'      => '', // The password of the database user.
-        'charset'       => 'utf8mb4', // The character set to use in the database.
-        'collation'     => 'utf8mb4_general_ci', // Collection set to use in database
-    ];
-
-    /**
      * If not specified, \InitPHP\Database\Entity::class is used by default.
      * 
      * @var \InitPHP\Database\Entity|string

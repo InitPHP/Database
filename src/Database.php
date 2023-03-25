@@ -335,7 +335,7 @@ class Database extends QueryBuilder
                 case self::ARRAY:
                     return $this->_last->asArray();
                 case self::ENTITY:
-                    return $this->_last->asEntity();
+                    return $this->_last->asEntity($this->_credentials['entity'] ?? Entity::class);
                 case self::OBJECT:
                     return $this->_last->asObject();
                 case self::LAZY:

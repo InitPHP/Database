@@ -18,9 +18,9 @@ use InitPHP\Database\Helpers\Helper;
 class Entity
 {
 
-    private array $_Attributes = [];
+    protected array $__attributes = [];
 
-    private array $_OriginalAttributes = [];
+    protected array $__attributesOriginal = [];
 
     public function __construct(?array $data = [])
     {
@@ -35,10 +35,10 @@ class Entity
         switch (\substr($name, 0, 3)) {
             case 'get':
                 $attr = Helper::camelCaseToSnakeCase(\substr($name, 3, -9));
-                return $this->_Attributes[$attr] ?? null;
+                return $this->__attributes[$attr] ?? null;
             case 'set':
                 $attr = Helper::camelCaseToSnakeCase(\substr($name, 3, -9));
-                return $this->_Attributes[$attr] = $arguments[0];
+                return $this->__attributes[$attr] = $arguments[0];
             default:
                 throw new \RuntimeException('There is no "' . $name . '" method.');
         }
@@ -51,7 +51,7 @@ class Entity
             $this->{$methodName}($value);
             return $value;
         }
-        return $this->_Attributes[$name] = $value;
+        return $this->__attributes[$name] = $value;
     }
 
     public function __get($name)
@@ -60,29 +60,29 @@ class Entity
         if(\method_exists($this, $methodName)){
             return $this->{$methodName}();
         }
-        return $this->_Attributes[$name] ?? null;
+        return $this->__attributes[$name] ?? null;
     }
 
     public function __isset($name)
     {
-        return isset($this->_Attributes[$name]);
+        return isset($this->__attributes[$name]);
     }
 
     public function __unset($name)
     {
-        if(isset($this->_Attributes[$name])){
-            unset($this->_Attributes[$name]);
+        if(isset($this->__attributes[$name])){
+            unset($this->__attributes[$name]);
         }
     }
 
     public function __debugInfo()
     {
-        return $this->_Attributes;
+        return $this->__attributes;
     }
 
     public function toArray(): array
     {
-        return $this->_Attributes;
+        return $this->__attributes;
     }
 
     public function getAttributes(): array
@@ -109,7 +109,7 @@ class Entity
 
     protected function syncOriginal(): self
     {
-        $this->_OriginalAttributes = $this->_Attributes;
+        $this->__attributesOriginal = $this->__attributes;
         return $this;
     }
 
