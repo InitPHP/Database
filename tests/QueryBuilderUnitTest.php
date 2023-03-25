@@ -420,4 +420,33 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $this->db->reset();
     }
 
+    public function testSubQuery()
+    {
+        Parameters::reset();
+        $this->db->select('u.name')
+            ->from('users AS u')
+            ->in('u.id', $this->db->subQuery(function (QueryBuilder $builder) {
+                $builder->select('id')
+                    ->from('roles')
+                    ->where('name', 'admin');
+            }));
+        $expected = 'SELECT u.name FROM users AS u WHERE u.id IN (SELECT id FROM roles WHERE name = :name)';
+        $this->assertEquals($expected, $this->db->generateSelectQuery());
+        $this->db->reset();
+
+
+        Parameters::reset();
+        $this->db->select('u.name, p.title')
+            ->from('users AS u')
+            ->join($this->db->subQuery(function (QueryBuilder $builder) {
+                $builder->select('id, title, user_id')
+                    ->from('posts')
+                    ->where('user_id', 5);
+            }, 'p'), 'p.user_id = u.id', '');
+
+        $expected = 'SELECT u.name, p.title FROM users AS u JOIN (SELECT id, title, user_id FROM posts WHERE user_id = 5) AS p ON p.user_id = u.id WHERE 1';
+        $this->assertEquals($expected, $this->db->generateSelectQuery());
+        $this->db->reset();
+    }
+
 }

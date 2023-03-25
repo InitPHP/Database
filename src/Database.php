@@ -7,7 +7,7 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.7
+ * @version     2.1
  * @link        https://www.muhammetsafak.com.tr
  */
 
@@ -293,29 +293,6 @@ class Database extends QueryBuilder
             return \serialize($value);
         }
         return false;
-    }
-
-    /**
-     * @param string $key
-     * @param string|int|float|bool|null $value
-     * @return $this
-     */
-    final public function setParameter(string $key, $value): self
-    {
-        Parameters::set($key, $value);
-        return $this;
-    }
-
-    /**
-     * @param array $parameters
-     * @return $this
-     */
-    final public function setParameters(array $parameters = []): self
-    {
-        foreach ($parameters as $key => $value) {
-            Parameters::set($key, $value);
-        }
-        return $this;
     }
 
     /**

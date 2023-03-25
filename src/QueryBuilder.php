@@ -7,16 +7,15 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.8
+ * @version     2.1
  * @link        https://www.muhammetsafak.com.tr
  */
+declare(strict_types=1);
 
 namespace InitPHP\Database;
 
-use InitPHP\Database\Helpers\{Helper, Parameters, Validation};
-use InitPHP\Database\Exceptions\QueryBuilderException;
-use InitPHP\Database\Exceptions\QueryGeneratorException;
-use \InitPHP\Database\Exceptions\ValueException;
+use \InitPHP\Database\Helpers\{Helper, Parameters};
+use \InitPHP\Database\Exceptions\{QueryBuilderException, QueryGeneratorException, ValueException};
 
 class QueryBuilder
 {
@@ -63,6 +62,29 @@ class QueryBuilder
     public function exportQB(): array
     {
         return $this->_STRUCTURE;
+    }
+
+    /**
+     * @param string $key
+     * @param string|int|float|bool|null $value
+     * @return $this
+     */
+    final public function setParameter(string $key, $value): self
+    {
+        Parameters::set($key, $value);
+        return $this;
+    }
+
+    /**
+     * @param array $parameters
+     * @return $this
+     */
+    final public function setParameters(array $parameters = []): self
+    {
+        foreach ($parameters as $key => $value) {
+            Parameters::set($key, $value);
+        }
+        return $this;
     }
 
     /**
@@ -368,7 +390,7 @@ class QueryBuilder
                 $this->_STRUCTURE['join'][$table] = 'NATURAL JOIN ' . $table;
                 break;
             default:
-                $this->_STRUCTURE['join'][$table] = $type . ' JOIN ' . $table . ' ON ' . $onStmt;
+                $this->_STRUCTURE['join'][$table] = \trim(($type . ' JOIN ' . $table . ' ON ' . $onStmt));
         }
         return $this;
     }
@@ -1124,6 +1146,23 @@ class QueryBuilder
         return new Raw($rawQuery);
     }
 
+    final public function subQuery(\Closure $closure, ?string $alias = null, bool $isIntervalQuery = true): Raw
+    {
+        $queryBuilder = new self();
+        \call_user_func_array($closure, [$queryBuilder]);
+
+        if ($alias !== null && $isIntervalQuery !== TRUE) {
+            throw new QueryBuilderException('To define alias to a subquery, it must be an inner query.');
+        }
+
+        $rawQuery = ($isIntervalQuery === TRUE ? '(' : '')
+            . $queryBuilder->generateSelectQuery()
+            . ($isIntervalQuery === TRUE ? ')' : '')
+            . ($alias !== null ? ' AS ' . $alias : '');
+
+        return $this->raw($rawQuery);
+    }
+
     final public function generateInsertQuery(): string
     {
         if (!empty($this->_STRUCTURE['table'])) {
@@ -1533,7 +1572,7 @@ class QueryBuilder
                         }
                         $values[] = Helper::isSQLParameterOrFunction($val) ? $val : Parameters::add($column, $val);
                     }
-                    $value = \implode(', ', \array_unique($values));
+                    $value = '(' . \implode(', ', \array_unique($values)) . ')';
                 } elseif (Helper::isSQLParameterOrFunction($value)) {
                     $value = (string)$value;
                 }else{
@@ -1541,7 +1580,7 @@ class QueryBuilder
                 }
                 return $column
                     . ($searchMark === 'NOTIN' ? ' NOT ' : ' ')
-                    . 'IN (' . $value . ')';
+                    . 'IN ' . $value;
             case 'FINDINSET':
             case 'NOTFINDINSET':
                 if(\is_array($value)){
