@@ -45,6 +45,7 @@ class Database extends QueryBuilder
         'password'              => null,
         'charset'               => 'utf8mb4',
         'collation'             => 'utf8mb4_unicode_ci',
+        'persistent'            => null,
         'tableSchema'           => null,
         'tableSchemaID'         => null,
         'entity'                => Entity::class,
@@ -138,6 +139,9 @@ class Database extends QueryBuilder
                     PDO::ATTR_PERSISTENT            => true,
                     PDO::ATTR_ERRMODE               => PDO::ERRMODE_EXCEPTION,
                 ];
+                if (\is_bool($this->_credentials['persistent'])) {
+                    $options[PDO::ATTR_PERSISTENT] = $this->_credentials['persistent'];
+                }
                 switch ($this->_credentials['return']) {
                     case null:
                     case self::ARRAY:
