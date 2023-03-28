@@ -46,6 +46,7 @@ class Database extends QueryBuilder
         'charset'               => 'utf8mb4',
         'collation'             => 'utf8mb4_unicode_ci',
         'persistent'            => null,
+        'options'               => [],
         'tableSchema'           => null,
         'tableSchemaID'         => null,
         'entity'                => Entity::class,
@@ -161,6 +162,10 @@ class Database extends QueryBuilder
                         break;
                     default:
                         $options[PDO::ATTR_DEFAULT_FETCH_MODE] = PDO::FETCH_BOTH;
+                }
+
+                if (\is_array($this->_credentials['options']) && !empty($this->_credentials['options'])) {
+                    $options = \array_merge($options, $this->_credentials['options']);
                 }
 
                 $this->_pdo = new PDO($this->_credentials['dsn'], $this->_credentials['username'], $this->_credentials['password'], $options);
