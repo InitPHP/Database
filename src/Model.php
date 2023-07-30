@@ -18,6 +18,8 @@ use InitPHP\Database\Exceptions\{DeletableException,
     ModelCallbacksException,
     ModelException,
     ModelRelationsException,
+    QueryBuilderException,
+    QueryGeneratorException,
     ReadableException,
     UpdatableException,
     WritableException};
@@ -243,7 +245,7 @@ abstract class Model extends Database
      * @param array $set
      * @return array|false
      */
-    final public function create(array $set)
+    final public function create(?array $set = null)
     {
         return $this->insert($set);
     }
@@ -252,16 +254,16 @@ abstract class Model extends Database
      * @param array $set
      * @return array|false
      */
-    final public function createBatch(array $set)
+    final public function createBatch(?array $set = null)
     {
         return $this->insertBatch($set);
     }
 
     /**
      * @param array $set
-     * @return array|false
+     * @return array|bool
      */
-    final public function insert(array $set)
+    final public function insert(?array $set = null)
     {
         if($this->isWritable() === FALSE){
             throw new WritableException('"' . \get_called_class() . '" is not a writable model.');
@@ -361,7 +363,7 @@ abstract class Model extends Database
      * @param array $set
      * @return array|bool
      */
-    final public function update(array $set)
+    final public function update(?array $set = null)
     {
         if($this->isUpdatable() === FALSE){
             throw new UpdatableException('"' . \get_called_class() . '" is not a updatable model.');
@@ -378,11 +380,13 @@ abstract class Model extends Database
     }
 
     /**
-     * @param array $set
      * @param string $referenceColumn
+     * @param array|null $set
      * @return array|false
+     * @throws QueryBuilderException
+     * @throws QueryGeneratorException
      */
-    final public function updateBatch(array $set, string $referenceColumn)
+    final public function updateBatch(string $referenceColumn, ?array $set = null)
     {
         if($this->isUpdatable() === FALSE){
             throw new UpdatableException('"' . \get_called_class() . '" is not a updatable model.');
@@ -397,7 +401,7 @@ abstract class Model extends Database
             }
         }
 
-        if(parent::updateBatch($set, $referenceColumn) === FALSE){
+        if(parent::updateBatch($referenceColumn, $set) === FALSE){
             return false;
         }
 
