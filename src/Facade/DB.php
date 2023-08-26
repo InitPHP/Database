@@ -153,9 +153,9 @@ class DB
         return self::getDatabase()->{$name}(...$arguments);
     }
 
-    public static function createImmutable(array $credentials)
+    public static function createImmutable(array $credentials): Database
     {
-        self::$databaseInstance = new Database($credentials);
+        return self::$databaseInstance = new Database($credentials);
     }
 
     private static function getDatabase(): Database
