@@ -139,7 +139,9 @@ DB::select('user.name as author_name', 'post.id', 'post.title')
 $res = DB::read();
 
 if($res->numRows() > 0){
-    foreach ($res->toAssoc() as $row) {
+    $results = $res->asAssoc()
+                    ->results();
+    foreach ($results as $row) {
         echo $row['title'] . ' by ' . $row['author_name'] . '<br />';
     }
 }
@@ -267,7 +269,8 @@ $res = DB::select(DB::raw("CONCAT(name, ' ', surname) AS fullname"))
  * WHERE title = '' AND (status = 1 OR status = 0)
  * LIMIT 5
  */
-foreach ($res->toAssoc() as $row) {
+$results = $res->asAssoc()->results();
+foreach ($results as $row) {
     echo $row['fullname'];
 }
 ```
