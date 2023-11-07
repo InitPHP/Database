@@ -66,6 +66,11 @@ $isInsert = DB::table('post')
 */
 if($isInsert){
     // Success
+} else {
+    $errors = DB::getError();
+    foreach ($errors as $errMsg) {
+        echo $errMsg;
+    }
 }
 ```
 
@@ -101,6 +106,11 @@ $isInsert = DB::table('post')
 
 if($isInsert){
     // Success
+} else {
+    $errors = DB::getError();
+    foreach ($errors as $errMsg) {
+        echo $errMsg;
+    }
 }
 ```
 
@@ -157,6 +167,11 @@ $isUpdate = DB::from('post')
 */
 if ($isUpdate) {
     // Success
+} else {
+    $errors = DB::getError();
+    foreach ($errors as $errMsg) {
+        echo $errMsg;
+    }
 }
 ```
 
@@ -195,6 +210,11 @@ $isUpdate = DB::from('post')
 */
 if ($isUpdate) {
     // Success
+} else {
+    $errors = DB::getError();
+    foreach ($errors as $errMsg) {
+        echo $errMsg;
+    }
 }
 ```
 
@@ -214,6 +234,11 @@ $isDelete = DB::from('post')
 */
 if ($isUpdate) {
     // Success
+} else {
+    $errors = DB::getError();
+    foreach ($errors as $errMsg) {
+        echo $errMsg;
+    }
 }
 ```
 
