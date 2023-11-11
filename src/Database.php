@@ -25,6 +25,42 @@ use InitPHP\Database\Exceptions\{QueryBuilderException,
     ConnectionException};
 use \InitPHP\Database\Helpers\{Helper, Parameters, Validation};
 use \PDO;
+use \RuntimeException;
+use \PDOException;
+use \Exception;
+use \InvalidArgumentException;
+use \Closure;
+
+use function microtime;
+use function round;
+use function count;
+use function current;
+use function substr;
+use function array_merge;
+use function is_numeric;
+use function is_bool;
+use function is_string;
+use function is_int;
+use function is_null;
+use function is_callable;
+use function is_object;
+use function is_array;
+use function in_array;
+use function trim;
+use function ltrim;
+use function stripslashes;
+use function serialize;
+use function strtr;
+use function str_replace;
+use function strtoupper;
+use function call_user_func_array;
+use function file_put_contents;
+use function time;
+use function date;
+use function method_exists;
+
+use const COUNT_RECURSIVE;
+use const FILE_APPEND;
 
 class Database extends QueryBuilder
 {
@@ -67,6 +103,7 @@ class Database extends QueryBuilder
         'return'                => null,
         'debug'                 => false,
         'log'                   => null,
+        'profiler'              => false,
     ];
 
     private Result $_last;
@@ -79,6 +116,8 @@ class Database extends QueryBuilder
 
     private array $_errors = [];
 
+    private array $_queryLogs = [];
+
     private Validation $_validation;
 
     public function __construct(array $credentials = [])
@@ -90,15 +129,16 @@ class Database extends QueryBuilder
     public function __call($name, $arguments)
     {
         if(Helper::str_starts_with($name, 'findBy') === FALSE){
-            throw new \RuntimeException('There is no "' . $name . '" method.');
+            throw new RuntimeException('There is no "' . $name . '" method.');
         }
-        $this->where(Helper::camelCaseToSnakeCase(\substr($name, 6)), \current($arguments));
+        $this->where(Helper::camelCaseToSnakeCase(substr($name, 6)), current($arguments));
+
         return $this;
     }
 
     final public function newInstance(array $credentials = []): Database
     {
-        $instance = new Database(empty($credentials) ? $this->_credentials : \array_merge($this->_credentials, $credentials));
+        $instance = new Database(empty($credentials) ? $this->_credentials : array_merge($this->_credentials, $credentials));
         $instance->isGlobal = false;
 
         return $instance;
@@ -112,9 +152,24 @@ class Database extends QueryBuilder
         return $clone;
     }
 
+    final public function enableQueryProfiler(): void
+    {
+        $this->_credentials['profiler'] = true;
+    }
+
+    final public function disableQueryProfiler(): void
+    {
+        $this->_credentials['profiler'] = false;
+    }
+
+    final public function getProfilerQueries(): array
+    {
+        return $this->_queryLogs;
+    }
+
     final public function setCredentials(array $credentials): self
     {
-        $this->_credentials = \array_merge($this->_credentials, $credentials);
+        $this->_credentials = array_merge($this->_credentials, $credentials);
         return $this;
     }
 
@@ -179,7 +234,7 @@ class Database extends QueryBuilder
                     }
                     $this->_pdo->exec("SET CHARACTER SET '" . $this->_credentials['charset'] . "'");
                 }
-            } catch (\PDOException $e) {
+            } catch (PDOException $e) {
                 throw new ConnectionException($e->getMessage(), (int)$e->getCode());
             }
         }
@@ -191,6 +246,8 @@ class Database extends QueryBuilder
     {
         $with = clone $this;
         $with->_pdo = $pdo;
+        $with->isGlobal = false;
+
         return $with;
     }
 
@@ -202,12 +259,14 @@ class Database extends QueryBuilder
     final public function setSchemaID(?string $column): self
     {
         $this->_credentials['tableSchemaID'] = $column;
+
         return $this;
     }
 
     final public function withSchemaID(?string $column): self
     {
         $with = clone $this;
+
         return $with->setSchemaID($column);
     }
 
@@ -219,12 +278,14 @@ class Database extends QueryBuilder
     final public function setSchema(?string $table): self
     {
         $this->_credentials['tableSchema'] = $table;
+
         return $this;
     }
 
     final public function withSchema(?string $table): self
     {
         $with = clone $this;
+
         return $with->setSchema($table);
     }
 
@@ -235,6 +296,7 @@ class Database extends QueryBuilder
             'enable'        => true,
             'testMode'      => $testMode,
         ];
+
         return (bool)$this->getPDO()->beginTransaction();
     }
 
@@ -250,6 +312,7 @@ class Database extends QueryBuilder
             'enable'        => false,
             'testMode'      => false,
         ];
+
         return (bool)$this->getPDO()->commit();
     }
 
@@ -260,24 +323,26 @@ class Database extends QueryBuilder
             'enable'        => false,
             'testMode'      => false,
         ];
+
         return (bool)$this->getPDO()->rollBack();
     }
 
-    final public function transaction(\Closure $closure): bool
+    final public function transaction(Closure $closure): bool
     {
         try {
             $this->beginTransaction(false);
-            \call_user_func_array($closure, [$this]);
+            call_user_func_array($closure, [$this]);
             $res = $this->completeTransaction();
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $res = $this->rollBack();
         }
+
         return $res;
     }
 
     final public function connection(array $credentials = []): self
     {
-        return new self($credentials);
+        return $this->newInstance($credentials);
     }
 
     /**
@@ -286,24 +351,24 @@ class Database extends QueryBuilder
      */
     final public function escape_str($value)
     {
-        if(\is_numeric($value)){
+        if(is_numeric($value)){
             return $value;
         }
-        if(\is_bool($value)){
+        if(is_bool($value)){
             return $value === FALSE ? 'FALSE' : 'TRUE';
         }
         if($value === null){
             return 'NULL';
         }
-        if(\is_string($value)){
-            $value = \str_replace("\\", "", \trim(\stripslashes($value), "' \\\t\n\r\0\x0B"));
-            return "'" . \str_replace("'", "\\'", $value) . "'";
+        if(is_string($value)){
+            $value = str_replace("\\", "", trim(stripslashes($value), "' \\\t\n\r\0\x0B"));
+            return "'" . str_replace("'", "\\'", $value) . "'";
         }
-        if(\is_object($value)){
-            return \serialize($value);
+        if(is_object($value)){
+            return serialize($value);
         }
-        if(\is_array($value)){
-            return \serialize($value);
+        if(is_array($value)){
+            return serialize($value);
         }
         return false;
     }
@@ -316,23 +381,32 @@ class Database extends QueryBuilder
     final public function query(string $sqlQuery, array $parameters = []): Result
     {
         $arguments = Parameters::get(true);
-        $parameters = empty($parameters) ? $arguments : \array_merge($arguments, $parameters);
+        $parameters = empty($parameters) ? $arguments : array_merge($arguments, $parameters);
         try {
+            $timerStart = $this->_credentials['profiler'] ? microtime(true) : 0;
             $stmt = $this->getPDO()->prepare($sqlQuery);
             if($stmt === FALSE){
-                throw new \Exception('The SQL query could not be prepared.');
+                throw new Exception('The SQL query could not be prepared.');
             }
             if(!empty($parameters)){
                 foreach ($parameters as $key => $value) {
-                    $stmt->bindValue(':' . \ltrim($key, ':'), $value, $this->_bind($value));
+                    $stmt->bindValue(':' . ltrim($key, ':'), $value, $this->_bind($value));
                 }
             }
             $execute = $stmt->execute();
+            if ($this->_credentials['profiler']) {
+                $timer = round((microtime(true) - $timerStart), 5);
+                $this->_queryLogs[] = [
+                    'query'     => $sqlQuery,
+                    'time'      => $timer,
+                    'args'      => $parameters,
+                ];
+            }
             if($execute === FALSE){
-                throw new \Exception('The SQL query could not be executed.');
+                throw new Exception('The SQL query could not be executed.');
             }
             $errorCode = $stmt->errorCode();
-            if($errorCode !== null && !empty(\trim($errorCode, "0 \t\n\r\0\x0B"))){
+            if($errorCode !== null && !empty(trim($errorCode, "0 \t\n\r\0\x0B"))){
                 $errorInfo = $stmt->errorInfo();
                 if(isset($errorInfo[2])){
                     $this->_errors[] = $errorCode . ' - ' . $errorInfo[2];
@@ -356,7 +430,7 @@ class Database extends QueryBuilder
                 default:
                     return $this->_last;
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             $message = $e->getMessage();
             $sqlMessage = 'SQL : '
                 . (empty($parameters) ? $sqlQuery : strtr($sqlQuery, $parameters));
@@ -408,7 +482,7 @@ class Database extends QueryBuilder
             throw new WritableException('');
         }
 
-        if($set !== null && \count($set) === \count($set, \COUNT_RECURSIVE)){
+        if($set !== null && count($set) === count($set, COUNT_RECURSIVE)){
             $this->_validation->setData($set);
             foreach ($set as $column => $value) {
                 if($this->_validation->validation($column, null) === FALSE){
@@ -448,7 +522,7 @@ class Database extends QueryBuilder
             throw new WritableException('');
         }
 
-        if ($set !== null && \count($set) !== \count($set, \COUNT_RECURSIVE)) {
+        if ($set !== null && count($set) !== count($set, COUNT_RECURSIVE)) {
             foreach ($set as $row) {
                 $data = [];
                 $this->_validation->setData($row);
@@ -572,7 +646,7 @@ class Database extends QueryBuilder
             foreach ($set as $data) {
                 $this->_validation->setData($data);
                 foreach ($data as $column => $value) {
-                    if (\in_array($column, [$this->getSchemaID(), $referenceColumn])) {
+                    if (in_array($column, [$this->getSchemaID(), $referenceColumn])) {
                         continue;
                     }
                     if ($this->_validation->validation($column, $this->getSchemaID()) === FALSE) {
@@ -603,7 +677,7 @@ class Database extends QueryBuilder
             throw new DeletableException('');
         }
         foreach ($conditions as $column => $value) {
-            if (\is_string($column)) {
+            if (is_string($column)) {
                 $this->where($column, $value);
             } else {
                 $this->where($value);
@@ -616,7 +690,7 @@ class Database extends QueryBuilder
                 $this->isOnlyDeletes = false;
             }else{
                 $this->is($this->_credentials['deletedField'], null)
-                    ->set($this->_credentials['deletedField'], \date($this->_credentials['timestampFormat']), false);
+                    ->set($this->_credentials['deletedField'], date($this->_credentials['timestampFormat']), false);
                 $query = $this->generateUpdateQuery();
             }
         }else{
@@ -650,17 +724,17 @@ class Database extends QueryBuilder
         return $this->readOne();
     }
 
-    public function group(\Closure $group, string $logical = 'AND'): self
+    public function group(Closure $group, string $logical = 'AND'): self
     {
-        $logical = \str_replace(['&&', '||'], ['AND', 'OR'], \strtoupper($logical));
-        if(!\in_array($logical, ['AND', 'OR'], true)){
-            throw new \InvalidArgumentException('Logical operator OR, AND, && or || it could be.');
+        $logical = str_replace(['&&', '||'], ['AND', 'OR'], strtoupper($logical));
+        if(!in_array($logical, ['AND', 'OR'], true)){
+            throw new InvalidArgumentException('Logical operator OR, AND, && or || it could be.');
         }
 
         $clone = clone $this;
         $clone->reset();
 
-        \call_user_func_array($group, [$clone]);
+        call_user_func_array($group, [$clone]);
 
         if($where = $clone->__generateWhereQuery()){
             $this->_STRUCTURE['where'][$logical][] = '(' . $where . ')';
@@ -725,7 +799,7 @@ class Database extends QueryBuilder
 
     final public function isAllowedFields(string $column): bool
     {
-        return empty($this->_credentials['allowedFields']) || \in_array($column, $this->_credentials['allowedFields']);
+        return empty($this->_credentials['allowedFields']) || in_array($column, $this->_credentials['allowedFields']);
     }
 
     protected function _logCreate(string $message): void
@@ -733,35 +807,35 @@ class Database extends QueryBuilder
         if(empty($this->_credentials['log'])){
             return;
         }
-        if(\is_callable($this->_credentials['log'])){
-            \call_user_func_array($this->_credentials['log'], [$message]);
+        if(is_callable($this->_credentials['log'])){
+            call_user_func_array($this->_credentials['log'], [$message]);
             return;
         }
-        if(\is_string($this->_credentials['log'])){
-            $path = \strtr($this->_credentials['log'], [
-                '{timestamp}'   => \time(),
-                '{date}'        => \date("Y-m-d"),
-                '{year}'        => \date("Y"),
-                '{month}'       => \date("m"),
-                '{day}'         => \date("d"),
-                '{hour}'        => \date("H"),
-                '{minute}'      => \date("i"),
-                '{second}'      => \date("s"),
+        if(is_string($this->_credentials['log'])){
+            $path = strtr($this->_credentials['log'], [
+                '{timestamp}'   => time(),
+                '{date}'        => date("Y-m-d"),
+                '{year}'        => date("Y"),
+                '{month}'       => date("m"),
+                '{day}'         => date("d"),
+                '{hour}'        => date("H"),
+                '{minute}'      => date("i"),
+                '{second}'      => date("s"),
             ]);
-            @\file_put_contents($path, $message, \FILE_APPEND);
+            @file_put_contents($path, $message, FILE_APPEND);
             return;
         }
-        if(\is_object($this->_credentials['log']) && \method_exists($this->_credentials['log'], 'critical')){
+        if(is_object($this->_credentials['log']) && method_exists($this->_credentials['log'], 'critical')){
             $this->_credentials['log']->critical($message);
         }
     }
 
     private function _bind($value)
     {
-        if(\is_bool($value) || \is_int($value)){
+        if(is_bool($value) || is_int($value)){
             return PDO::PARAM_INT;
         }
-        if(\is_null($value)){
+        if(is_null($value)){
             return PDO::PARAM_NULL;
         }
         return PDO::PARAM_STR;

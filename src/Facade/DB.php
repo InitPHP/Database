@@ -137,6 +137,9 @@ use InitPHP\Database\{Database, Raw, Result, Utils\Pagination};
  * @method static Database andIsNot(string $column, $value = null)
  * @method static Database offset(int $offset = 0)
  * @method static Database limit(int $limit)
+ * @method static void enableQueryProfiler()
+ * @method static void disableQueryProfiler()
+ * @method static array getProfilerQueries()
  */
 class DB
 {
