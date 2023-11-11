@@ -275,6 +275,24 @@ foreach ($results as $row) {
 }
 ```
 
+#### Working With A Different Connection
+
+This library was developed with the thought that you would work with a single database and connection, but I know that in some projects you work with more than one connection and database.
+
+If you want to work with a different non-global connection, use the `connect()` method.
+
+```php
+use \InitPHP\Database\Facade\DB;
+
+DB::connect([
+    'dsn'       => 'mysql:host=localhost;port=3306;dbname=test;charset=utf8mb4',
+    'username'  => 'root',
+    'password'  => '',
+    'charset'   => 'utf8mb4',
+    'collation' => 'utf8mb4_general_ci',
+]);
+```
+
 ### Model and Entity
 
 Model and Entity; are two common concepts used in database abstraction. To explain these two concepts in the roughest way; 
@@ -448,6 +466,10 @@ class PostEntity extends \InitPHP\Database\Entity
 }
 ```
 
+## Developement Tools
+
+Below I have mentioned some developer tools that you can use during and after development.
+
 ### Logger
 
 ```php
@@ -523,6 +545,34 @@ DB::createImmutable([
     
     'debug'     => true, // boolean
 ]);
+```
+
+### Profiler Mode
+
+Profiler mode is a developer tool available in v2.2 and above. It is a feature that allows you to see the executed queries along with their execution times.
+
+```php
+use InitPHP\Database\Facade\DB;
+
+DB::enableQueryProfiler();
+
+DB::table('users')->where('name', 'John')->get();
+
+var_dump(DB::getProfilerQueries());
+
+/**
+ * The output of the above example looks like this;
+ * [
+ *      [
+ *          'query' => 'SELECT * FROM users WHERE name = :name',
+ *          'time'  => '0.00064',
+ *          'args'  => [
+ *              ':name'     => 'John',
+ *          ]
+ *      ]
+ * ]
+ * 
+ */
 ```
 
 ## To Do

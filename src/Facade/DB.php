@@ -137,6 +137,9 @@ use InitPHP\Database\{Database, Raw, Result, Utils\Pagination};
  * @method static Database andIsNot(string $column, $value = null)
  * @method static Database offset(int $offset = 0)
  * @method static Database limit(int $limit)
+ * @method static void enableQueryProfiler()
+ * @method static void disableQueryProfiler()
+ * @method static array getProfilerQueries()
  */
 class DB
 {
@@ -156,6 +159,13 @@ class DB
     public static function createImmutable(array $credentials): Database
     {
         return self::$databaseInstance = new Database($credentials);
+    }
+
+    public static function connect(array $credentials): Database
+    {
+        return isset(self::$databaseInstance)
+            ? self::getDatabase()->newInstance($credentials)
+            : self::createImmutable($credentials);
     }
 
     private static function getDatabase(): Database

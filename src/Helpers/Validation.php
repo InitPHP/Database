@@ -147,7 +147,7 @@ final class Validation
         if($this->db->getSchemaID() === null){
             throw new ValidationException('You need a model with a PRIMARY KEY to use the is_unique validation.');
         }
-        $db = $this->db->newInstance();
+        $db = $this->db->clone();
         $db->reset();
         $parameters = Parameters::get(true);
         $db->select($db->getSchemaID())->offset(0)
