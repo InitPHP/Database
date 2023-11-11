@@ -158,6 +158,13 @@ class DB
         return self::$databaseInstance = new Database($credentials);
     }
 
+    public static function connect(array $credentials): Database
+    {
+        return isset(self::$databaseInstance)
+            ? self::getDatabase()->newInstance($credentials)
+            : self::createImmutable($credentials);
+    }
+
     private static function getDatabase(): Database
     {
         return self::$databaseInstance;

@@ -37,6 +37,8 @@ class Database extends QueryBuilder
 
     private PDO $_pdo;
 
+    private bool $isGlobal = false;
+
     private static PDO $_globalPDO;
 
     private array $_credentials = [
@@ -75,7 +77,6 @@ class Database extends QueryBuilder
         'testMode'  => false,
     ];
 
-
     private array $_errors = [];
 
     private Validation $_validation;
@@ -97,7 +98,18 @@ class Database extends QueryBuilder
 
     final public function newInstance(array $credentials = []): Database
     {
-        return new self(empty($credentials) ? $this->_credentials : \array_merge($this->_credentials, $credentials));
+        $instance = new Database(empty($credentials) ? $this->_credentials : \array_merge($this->_credentials, $credentials));
+        $instance->isGlobal = false;
+
+        return $instance;
+    }
+
+    final public function clone(): Database
+    {
+        $clone = new self($this->_credentials);
+        $clone->isGlobal = $this->isGlobal;
+
+        return $clone;
     }
 
     final public function setCredentials(array $credentials): self
@@ -124,11 +136,12 @@ class Database extends QueryBuilder
     final public function connectionAsGlobal(): void
     {
         self::$_globalPDO = $this->getPDO();
+        $this->isGlobal = true;
     }
 
     final public function getPDO(): PDO
     {
-        if(isset(self::$_globalPDO)){
+        if(isset(self::$_globalPDO) && $this->isGlobal){
             return self::$_globalPDO;
         }
         if(!isset($this->_pdo)){
