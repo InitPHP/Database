@@ -73,7 +73,7 @@ class Database extends QueryBuilder
 
     private PDO $_pdo;
 
-    private bool $isGlobal = false;
+    private bool $_isGlobal = false;
 
     private static PDO $_globalPDO;
 
@@ -139,7 +139,7 @@ class Database extends QueryBuilder
     final public function newInstance(array $credentials = []): Database
     {
         $instance = new Database(empty($credentials) ? $this->_credentials : array_merge($this->_credentials, $credentials));
-        $instance->isGlobal = false;
+        $instance->_isGlobal = false;
 
         return $instance;
     }
@@ -147,7 +147,7 @@ class Database extends QueryBuilder
     final public function clone(): Database
     {
         $clone = new self($this->_credentials);
-        $clone->isGlobal = $this->isGlobal;
+        $clone->_isGlobal = $this->_isGlobal;
 
         return $clone;
     }
@@ -191,12 +191,12 @@ class Database extends QueryBuilder
     final public function connectionAsGlobal(): void
     {
         self::$_globalPDO = $this->getPDO();
-        $this->isGlobal = true;
+        $this->_isGlobal = true;
     }
 
-    final public function getPDO(): PDO
+    public function getPDO(): PDO
     {
-        if(isset(self::$_globalPDO) && $this->isGlobal){
+        if(isset(self::$_globalPDO) && $this->_isGlobal){
             return self::$_globalPDO;
         }
         if(!isset($this->_pdo)){
@@ -246,7 +246,7 @@ class Database extends QueryBuilder
     {
         $with = clone $this;
         $with->_pdo = $pdo;
-        $with->isGlobal = false;
+        $with->_isGlobal = false;
 
         return $with;
     }
