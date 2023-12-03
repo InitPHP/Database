@@ -3,18 +3,16 @@ declare(strict_types=1);
 
 namespace Test\InitPHP\Database;
 
-use InitPHP\Database\Database;
-use InitPHP\Database\Helpers\Parameters;
-use InitPHP\Database\QueryBuilder;
+use InitPHP\Database\QueryBuilder\QueryBuilder;
 
 class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 {
 
-    protected Database $db;
+    protected QueryBuilder $db;
 
     protected function setUp(): void
     {
-        $this->db = new Database();
+        $this->db = new QueryBuilder();
         parent::setUp();
     }
 
@@ -26,7 +24,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = "SELECT id, name FROM user WHERE 1";
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testBlankBuild()
@@ -36,7 +34,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT * FROM post WHERE 1';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testSelfJoinBuild()
@@ -48,7 +46,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = "SELECT post.id, post.title, user.name AS authorName FROM post, user WHERE user.id = post.user";
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testInnerJoinBuild()
@@ -60,7 +58,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = "SELECT post.id, post.title, user.name as authorName FROM post INNER JOIN user ON user.id = post.user WHERE 1";
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testLeftJoinBuild()
@@ -72,7 +70,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = "SELECT post.id, post.title, user.name as authorName FROM post LEFT JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testRightJoinBuild()
@@ -84,7 +82,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = "SELECT post.id, post.title, user.name as authorName FROM post RIGHT JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testLeftOuterJoinBuild()
@@ -96,7 +94,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = "SELECT post.id, post.title, user.name as authorName FROM post LEFT OUTER JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testRightOuterJoinBuild()
@@ -108,7 +106,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = "SELECT post.id, post.title, user.name as authorName FROM post RIGHT OUTER JOIN user ON user.id=post.user WHERE 1";
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testLimitStatement()
@@ -120,7 +118,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT id FROM book WHERE 1 LIMIT 5';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testOffsetStatement()
@@ -129,11 +127,10 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
             ->from('book')
             ->offset(5);
 
-        // Offset is specified If no limit is specified; The limit is 10000.
-        $expected = 'SELECT id FROM book WHERE 1 LIMIT 5, 10000';
+        $expected = 'SELECT id FROM book WHERE 1 OFFSET 5';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testOffsetLimitStatement()
@@ -146,7 +143,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT id FROM book WHERE 1 LIMIT 50, 25';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testNegativeOffsetLimitStatement()
@@ -160,7 +157,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT id FROM book WHERE 1 LIMIT 25, 20';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testSelectDistinctStatement()
@@ -170,15 +167,18 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT DISTINCT(name) FROM book WHERE 1';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
+    }
 
+    public function testSelectDistinctJoinStatement()
+    {
         $this->db->selectDistinct('author.name')
             ->from('book')
             ->innerJoin('author', 'author.id=book.author');
         $expected = 'SELECT DISTINCT(author.name) FROM book INNER JOIN author ON author.id=book.author WHERE 1';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testOrderByStatement()
@@ -192,7 +192,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT name FROM book WHERE 1 ORDER BY authorId ASC, id DESC LIMIT 10';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testInsertStatementBuild()
@@ -210,12 +210,12 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $expected = 'INSERT INTO post (title, content, author, status) VALUES (:title, :content, 5, :status);';
         $this->assertEquals($expected, $this->db->generateInsertQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testInsertBatchStatementBuild()
     {
-        Parameters::reset();
+        
         $this->db->from('post');
 
         $this->db->set([
@@ -232,14 +232,14 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $expected = 'INSERT INTO post (title, content, author, status) VALUES (:title, :content, 5, :status), (:title_1, :content_1, NULL, :status_1);';
         $this->assertEquals($expected, $this->db->generateBatchInsertQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testUpdateStatementBuild()
     {
-        Parameters::reset();
+        
         $this->db->from('post')
-            ->where('status', true)
+            ->where('status', '=', true)
             ->limit(5);
 
         $data = [
@@ -251,14 +251,14 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'UPDATE post SET title = :title, status = :status_1 WHERE status = :status LIMIT 5';
 
         $this->assertEquals($expected, $this->db->generateUpdateQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testUpdateBatchStatementBuild()
     {
-        Parameters::reset();
+        
         $this->db->from('post')
-            ->where('status', true);
+            ->where('status', '=', true);
 
         $this->db->set([
             'id'        => 5,
@@ -272,20 +272,20 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'UPDATE post SET title = CASE WHEN id = 5 THEN :title WHEN id = 10 THEN :title_1 ELSE title END, content = CASE WHEN id = 5 THEN :content ELSE content END WHERE status = :status AND id IN (5, 10)';
 
         $this->assertEquals($expected, $this->db->generateUpdateBatchQuery('id'));
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testDeleteStatementBuild()
     {
-        Parameters::reset();
+        
         $this->db->from('post')
-            ->where('authorId', 5)
+            ->where('authorId', '=', 5)
             ->limit(100);
 
         $expected = 'DELETE FROM post WHERE authorId = 5 LIMIT 100';
 
         $this->assertEquals($expected, $this->db->generateDeleteQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testWhereSQLFunctionStatementBuild()
@@ -296,7 +296,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT * FROM post WHERE date BETWEEN :date AND CURDATE()';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testWhereRegexpSQLStatementBuild()
@@ -307,13 +307,11 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT * FROM post WHERE title REGEXP :title';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testSelectCoalesceSQLStatementBuild()
     {
-
-        Parameters::reset();
         $this->db->select('post.title')
             ->selectCoalesce('stat.view', 0)
             ->from('post')
@@ -323,9 +321,11 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT post.title, COALESCE(stat.view, 0) FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = 5';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
+    }
 
-        Parameters::reset();
+    public function testSelectCoalesceDefaultValue()
+    {
         $this->db->select('post.title')
             ->selectCoalesce('stat.view', 'post.view', 'views')
             ->from('post')
@@ -335,14 +335,12 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT post.title, COALESCE(stat.view, post.view) AS views FROM post LEFT JOIN stat ON stat.id=post.id WHERE post.id = 5';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
 
     public function testTableAliasSQLStatementBuild()
     {
-
-        Parameters::reset();
         $this->db->select('p.title')
             ->select('s.view as s_view')
             ->from('post as p')
@@ -352,9 +350,11 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT p.title, s.view as s_view FROM post as p LEFT JOIN stat as s ON s.id=p.id WHERE p.id = 5';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
+    }
 
-        Parameters::reset();
+    public function testTableJoinAliasSQLStatementBuild()
+    {
         $this->db->select('p.title')
             ->select('s.view as s_view')
             ->from('post p')
@@ -364,49 +364,61 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
         $expected = 'SELECT p.title, s.view as s_view FROM post p LEFT JOIN stat s ON s.id=p.id WHERE p.id = 5';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testWhereGroupStatement()
     {
-        Parameters::reset();
+        $this->db->select('id')
+            ->from('users')
+            ->where('status', 1)
+            ->group(function (QueryBuilder $builder) {
+                $builder->where('type', 3)
+                    ->where('type', 4);
+            });
+
+        $expected = 'SELECT id FROM users WHERE status = 1 AND (type = 3 AND type = 4)';
+
+        $this->assertEquals($expected, $this->db->generateSelectQuery());
+        $this->db->resetStructure();
+    }
+
+    public function testWhereGroupMultipleStatement()
+    {
         $this->db->select('id, title, content, url')
             ->from('posts')
             ->where('status', 1)
-            ->group(function (Database $db) {
+            ->group(function (QueryBuilder $db) {
                 $db->where('user_id', 1)
-                    ->where('datetime', date("Y-m-d"), '>=');
+                    ->where('datetime', '>=', date("Y-m-d"));
             }, 'or')
-            ->group(function (Database $db) {
-                $db->group(function (Database $db) {
-                    $db->where('id', 1)
-                        ->where('status', 0);
+            ->group(function (QueryBuilder $db) {
+                $db->group(function (QueryBuilder $db) {
+                    $db->where('id', 2)
+                        ->where('status', 3);
                 }, 'or')
-                    ->group(function (Database $db) {
-                        $db->where('id', 2)
-                            ->where('status', 1);
+                    ->group(function (QueryBuilder $db) {
+                        $db->where('id', 4)
+                            ->where('status', 5);
                     }, 'or');
             }, 'or');
 
-
-
-        $expected = 'SELECT id, title, content, url FROM posts WHERE status = 1 AND (user_id = 1 AND datetime >= :datetime) OR ((id = 1 AND status = 0) OR (id = 2 AND status = 1))';
+        $expected = 'SELECT id, title, content, url FROM posts WHERE status = 1 AND (user_id = 1 AND datetime >= :datetime) OR ((id = 2 AND status = 3) OR (id = 4 AND status = 5))';
 
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
-
-        Parameters::reset();
+        $this->db->resetStructure();
     }
+
 
     public function testJoinClosureGive()
     {
-        Parameters::reset();
+        
         $this->db->select('u.id', 'u.name', 'u.status, p.title')
             ->from('users AS u')
             ->where('u.status', 1)
             ->join('posts AS p', function (QueryBuilder $builder) {
                 $builder->on('p.user_id', 'u.id')
-                    ->where('p.publisher_time', $builder->raw('NOW()'), '>=');
+                    ->where('p.publisher_time', '>=', $builder->raw('NOW()'));
             })
             ->join('categories AS c', function (QueryBuilder $builder) {
                 $builder->on('c.id', 'p.category_id')
@@ -417,25 +429,26 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $expected = 'SELECT u.id, u.name, u.status, p.title FROM users AS u INNER JOIN posts AS p ON p.user_id = u.id INNER JOIN categories AS c ON c.id = p.category_id AND c.blog_id = u.blog_id WHERE u.status = 1 AND p.publisher_time >= NOW() AND c.status = 1 HAVING COUNT(p.category_id) > 1 LIMIT 5';
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
     public function testSubQuery()
     {
-        Parameters::reset();
+        
         $this->db->select('u.name')
             ->from('users AS u')
-            ->in('u.id', $this->db->subQuery(function (QueryBuilder $builder) {
+            ->whereIn('u.id', $this->db->subQuery(function (QueryBuilder $builder) {
                 $builder->select('id')
                     ->from('roles')
                     ->where('name', 'admin');
             }));
         $expected = 'SELECT u.name FROM users AS u WHERE u.id IN (SELECT id FROM roles WHERE name = :name)';
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
+    }
 
-
-        Parameters::reset();
+    public function testSubQueryJoinTable()
+    {
         $this->db->select('u.name, p.title')
             ->from('users AS u')
             ->join($this->db->subQuery(function (QueryBuilder $builder) {
@@ -446,7 +459,7 @@ class QueryBuilderUnitTest extends \PHPUnit\Framework\TestCase
 
         $expected = 'SELECT u.name, p.title FROM users AS u JOIN (SELECT id, title, user_id FROM posts WHERE user_id = 5) AS p ON p.user_id = u.id WHERE 1';
         $this->assertEquals($expected, $this->db->generateSelectQuery());
-        $this->db->reset();
+        $this->db->resetStructure();
     }
 
 }

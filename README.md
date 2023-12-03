@@ -6,7 +6,7 @@ Manage your database with or without abstraction. This library is built on the P
 
 ## Requirements
 
-- PHP 7.4 and later.
+- PHP 8.0 and later.
 - PHP PDO extension.
 
 ## Supported Databases
@@ -20,15 +20,9 @@ Databases supported by PDO and suitable drivers are available at [https://www.ph
 composer require initphp/database
 ```
 
-or include the `src/init.php` file from this repo in your system.
-
-```php
-require_once "src/Init.php";
-```
-
 ## Usage
 
-### QueryBuilder and CRUD
+### QueryBuilder & DBAL and CRUD
 
 ```php
 require_once "vendor/autoload.php";
@@ -53,8 +47,7 @@ $data = [
     'content'   => 'Post Content',
 ];
 
-$isInsert = DB::table('post')
-                ->create($data);
+$isInsert = DB::create('post', $data);
 
 /**
 * This executes the following query.
@@ -67,8 +60,7 @@ $isInsert = DB::table('post')
 if($isInsert){
     // Success
 } else {
-    $errors = DB::getError();
-    foreach ($errors as $errMsg) {
+    foreach (DB::getErrors() as $errMsg) {
         echo $errMsg;
     }
 }
@@ -91,8 +83,7 @@ $data = [
     ],
 ];
 
-$isInsert = DB::table('post')
-                ->createBatch($data);
+$isInsert = DB::createBatch('post', $data);
 
 /**
 * This executes the following query.
@@ -107,8 +98,7 @@ $isInsert = DB::table('post')
 if($isInsert){
     // Success
 } else {
-    $errors = DB::getError();
-    foreach ($errors as $errMsg) {
+    foreach (DB::getErrors() as $errMsg) {
         echo $errMsg;
     }
 }
@@ -119,14 +109,7 @@ if($isInsert){
 ```php
 use \InitPHP\Database\Facade\DB;
 
-DB::select('user.name as author_name', 'post.id', 'post.title')
-    ->from('post')
-    ->selfJoin('user', 'user.id=post.author')
-    ->where('post.status', 1)
-    ->orderBy('post.id', 'ASC')
-    ->orderBy('post.created_at', 'DESC')
-    ->offset(20)->limit(10);
-    
+
 /**
 * This executes the following query.
 * 
@@ -136,11 +119,19 @@ DB::select('user.name as author_name', 'post.id', 'post.title')
 * ORDER BY post ASC, post.created_at DESC
 * LIMIT 20, 10
 */
-$res = DB::read();
 
+$res = DB::select('user.name as author_name', 'post.id', 'post.title')
+    ->from('post')
+    ->selfJoin('user', 'user.id=post.author')
+    ->where('post.status', 1)
+    ->orderBy('post.id', 'ASC')
+    ->orderBy('post.created_at', 'DESC')
+    ->offset(20)->limit(10)
+    ->read('post');
+    
 if($res->numRows() > 0){
     $results = $res->asAssoc()
-                    ->results();
+                    ->rows();
     foreach ($results as $row) {
         echo $row['title'] . ' by ' . $row['author_name'] . '<br />';
     }
@@ -156,9 +147,8 @@ $data = [
     'content'   => 'New Content',
 ];
 
-$isUpdate = DB::from('post')
-                ->where('id', 13)
-                ->update($data);
+$isUpdate = DB::where('id', 13)
+                ->update('post', $data);
     
 /**
 * This executes the following query.
@@ -170,8 +160,7 @@ $isUpdate = DB::from('post')
 if ($isUpdate) {
     // Success
 } else {
-    $errors = DB::getError();
-    foreach ($errors as $errMsg) {
+    foreach (DB::getErrors() as $errMsg) {
         echo $errMsg;
     }
 }
@@ -193,9 +182,8 @@ $data = [
     ]
 ];
 
-$isUpdate = DB::from('post')
-                ->where('status', 1)
-                ->updateBatch($data, 'id');
+$isUpdate = DB::where('status', '!=', 0)
+                ->updateBatch('post', $data, 'id');
     
 /**
 * This executes the following query.
@@ -208,13 +196,12 @@ $isUpdate = DB::from('post')
 * 	content = CASE 
 * 		WHEN id = 5 THEN 'New Content #5'
 * 		ELSE content END 
-* WHERE status = 1 AND id IN (5, 10)
+* WHERE status != 0 AND id IN (5, 10)
 */
 if ($isUpdate) {
     // Success
 } else {
-    $errors = DB::getError();
-    foreach ($errors as $errMsg) {
+    foreach (DB::getErrors() as $errMsg) {
         echo $errMsg;
     }
 }
@@ -225,9 +212,8 @@ if ($isUpdate) {
 ```php
 use \InitPHP\Database\Facade\DB;
 
-$isDelete = DB::from('post')
-                ->where('id', 13)
-                ->delete();
+$isDelete = DB::where('id', 13)
+                ->delete('post');
     
 /**
 * This executes the following query.
@@ -237,8 +223,7 @@ $isDelete = DB::from('post')
 if ($isUpdate) {
     // Success
 } else {
-    $errors = DB::getError();
-    foreach ($errors as $errMsg) {
+    foreach (DB::getErrors() as $errMsg) {
         echo $errMsg;
     }
 }
@@ -263,13 +248,15 @@ $res = DB::select(DB::raw("CONCAT(name, ' ', surname) AS fullname"))
         ->where(DB::raw("title = '' AND (status = 1 OR status = 0)"))
         ->limit(5)
         ->get('users');
+        
 /**
  * SELECT CONCAT(name, ' ', surname) AS fullname 
  * FROM users 
  * WHERE title = '' AND (status = 1 OR status = 0)
  * LIMIT 5
  */
-$results = $res->asAssoc()->results();
+$results = $res->asAssoc()
+                ->rows();
 foreach ($results as $row) {
     echo $row['fullname'];
 }
@@ -309,9 +296,21 @@ class Posts extends \InitPHP\Database\Model
 {
 
     /**
+    * If your model will use a connection other than your global connection, provide connection information.
+    * @var array|null <p>Default : NULL</p> 
+    */
+    protected array $credentials = [
+        'dsn'               => '',
+        'username'          => 'root',
+        'password'          => '',
+        'charset'           => 'utf8mb4',
+        'collation'         => 'utf8mb4_unicode_ci',
+    ];
+
+    /**
      * If not specified, \InitPHP\Database\Entity::class is used by default.
      * 
-     * @var \InitPHP\Database\Entity|string
+     * @var \InitPHP\Database\Orm\Entity|string
      */
     protected $entity = \App\Entities\PostEntity::class;
 
@@ -320,14 +319,14 @@ class Posts extends \InitPHP\Database\Model
      * 
      * @var string
      */
-    protected string $table = 'post';
+    protected string $schema = 'posts';
 
     /**
      * The name of the PRIMARY KEY column. If not, define it as NULL.
      * 
      * @var null|string
      */
-    protected ?string $primaryKey = 'id';
+    protected ?string $schemaId = 'id';
 
     /**
      * Specify FALSE if you want the data to be permanently deleted.
@@ -357,53 +356,6 @@ class Posts extends \InitPHP\Database\Model
      */
     protected ?string $deletedField = 'deleted_at';
 
-    /**
-     * An array that defines the columns that will be allowed to be used in Insert and Update operations.
-     * If you want to give access to all columns; You can specify it as NULL.
-     * 
-     * @var null|string[]
-     */
-    protected ?array $allowedFields = [
-        'title', 'content', // ...
-    ];
-
-    /**
-     * Turns the use of callable functions on or off.
-     * 
-     * @var bool
-     */
-    protected bool $allowedCallbacks = false;
-
-    /**
-     * @var string[]|\Closure[]
-     */
-    protected array $beforeInsert = [];
-
-    /**
-     * @var string[]|\Closure[]
-     */
-    protected array $afterInsert = [];
-
-    /**
-     * @var string[]|\Closure[]
-     */
-    protected array $beforeUpdate = [];
-
-    /**
-     * @var string[]|\Closure[]
-     */
-    protected array $afterUpdate = [];
-
-    /**
-     * @var string[]|\Closure[]
-     */
-    protected array $beforeDelete = [];
-
-    /**
-     * @var string[]|\Closure[]
-     */
-    protected array $afterDelete = [];
-
     protected bool $readable = true;
 
     protected bool $writable = true;
@@ -411,25 +363,6 @@ class Posts extends \InitPHP\Database\Model
     protected bool $deletable = true;
 
     protected bool $updatable = true;
-
-    protected array $validation = [
-        'id'    => ['is_unique', 'int'],
-        'title' => ['required', 'string', 'length(0,255)'],
-    ];
-
-    protected array $validationMsg = [
-        'id'    => [],
-        'title' => [
-            'required'      => '{field} cannot be left blank.',
-            'string'        => '{field} must be a string.',
-        ],
-    ];
-
-    protected array $validationLabels = [
-        'id'    => 'Post ID',
-        'title' => 'Post Title',
-        // ...
-    ];
     
 }
 ```
@@ -439,7 +372,7 @@ The most basic example of a entity class would look like this.
 ```php
 namespace App\Entities;
 
-class PostEntity extends \InitPHP\Database\Entity 
+class PostEntity extends \InitPHP\Database\ORM\Entity 
 {
     /**
      * An example of a getter method for the "post_title" column.
@@ -466,7 +399,7 @@ class PostEntity extends \InitPHP\Database\Entity
 }
 ```
 
-## Developement Tools
+## Development Tools
 
 Below I have mentioned some developer tools that you can use during and after development.
 
@@ -549,16 +482,16 @@ DB::createImmutable([
 
 ### Profiler Mode
 
-Profiler mode is a developer tool available in v2.2 and above. It is a feature that allows you to see the executed queries along with their execution times.
+Profiler mode is a developer tool available in v3 and above. It is a feature that allows you to see the executed queries along with their execution times.
 
 ```php
 use InitPHP\Database\Facade\DB;
 
-DB::enableQueryProfiler();
+DB::enableQueryLog();
 
 DB::table('users')->where('name', 'John')->get();
 
-var_dump(DB::getProfilerQueries());
+var_dump(DB::getQueryLogs());
 
 /**
  * The output of the above example looks like this;
