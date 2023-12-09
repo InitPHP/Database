@@ -7,17 +7,18 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.7
+ * @version     3.0
  * @link        https://www.muhammetsafak.com.tr
  */
 
 namespace InitPHP\Database\Utils;
 
-use \InitPHP\Database\DBAL\Interfaces\{DatabaseInterface, CRUDInterface};
-use InitPHP\Database\DBAL\Exceptions\SQLQueryExecuteException;
-use InitPHP\Database\ORM\Interfaces\ModelInterface;
-use InitPHP\Database\QueryBuilder\Interfaces\QueryBuilderInterface;
 use Closure;
+use Throwable;
+use InitORM\Database\Interfaces\DatabaseInterface;
+use InitORM\QueryBuilder\Exceptions\QueryBuilderException;
+use InitORM\QueryBuilder\QueryBuilderInterface;
+use InitORM\ORM\Interfaces\ModelInterface;
 
 /**
  * @mixin QueryBuilderInterface
@@ -25,7 +26,7 @@ use Closure;
 class Datatables
 {
 
-    private DatabaseInterface|CRUDInterface|ModelInterface $db;
+    private DatabaseInterface|ModelInterface $db;
 
     private array $request;
 
@@ -47,7 +48,7 @@ class Datatables
 
     private array $permanentSelect = [];
 
-    public function __construct(DatabaseInterface|ModelInterface|CRUDInterface $db)
+    public function __construct(DatabaseInterface|ModelInterface $db)
     {
         $this->request = array_merge($_GET ?? [], $_POST ?? []);
 
@@ -71,7 +72,7 @@ class Datatables
 
     /**
      * @return string
-     * @throws SQLQueryExecuteException
+     * @throws Throwable
      */
     public function __toString(): string
     {
@@ -80,7 +81,7 @@ class Datatables
 
     /**
      * @return array
-     * @throws SQLQueryExecuteException
+     * @throws Throwable
      */
     public function toArray(): array
     {
@@ -90,7 +91,7 @@ class Datatables
 
     /**
      * @return $this
-     * @throws SQLQueryExecuteException
+     * @throws Throwable
      */
     public function handle(): self
     {
@@ -179,7 +180,7 @@ class Datatables
 
     /**
      * @return int
-     * @throws SQLQueryExecuteException
+     * @throws Throwable
      */
     private function getCount(): int
     {
@@ -203,21 +204,21 @@ class Datatables
             $this->db->{$process['method']}(...$process['arguments']);
         }
         $isGroupBy === false && $this->db->selectCount('*', 'data_length');
-        $res = $this->db->get();
+        $res = $this->db->read();
 
         return $res->numRows() > 0 ? $res->asAssoc()->row()['data_length'] : 0;
     }
 
     /**
      * @return array
-     * @throws SQLQueryExecuteException
+     * @throws Throwable
      */
     private function getResults(): array
     {
         foreach ($this->builder as $process) {
             $this->db->{$process['method']}(...$process['arguments']);
         }
-        $res = $this->db->get();
+        $res = $this->db->read();
 
         return $res->numRows() > 0 ? $res->asAssoc()->rows() : [];
     }
@@ -254,6 +255,7 @@ class Datatables
 
     /**
      * @return void
+     * @throws QueryBuilderException
      */
     private function filterQuery(): void
     {

@@ -26,7 +26,7 @@ composer require initphp/database
 
 ```php
 require_once "vendor/autoload.php";
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 // Connection
 DB::createImmutable([
@@ -41,7 +41,7 @@ DB::createImmutable([
 #### Create
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 $data = [
     'title'     => 'Post Title',
     'content'   => 'Post Content',
@@ -59,17 +59,13 @@ $isInsert = DB::create('post', $data);
 */
 if($isInsert){
     // Success
-} else {
-    foreach (DB::getErrors() as $errMsg) {
-        echo $errMsg;
-    }
 }
 ```
 
 ##### Create Batch
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 $data = [
     [
@@ -97,17 +93,13 @@ $isInsert = DB::createBatch('post', $data);
 
 if($isInsert){
     // Success
-} else {
-    foreach (DB::getErrors() as $errMsg) {
-        echo $errMsg;
-    }
 }
 ```
 
 #### Read
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 
 /**
@@ -120,6 +112,7 @@ use \InitPHP\Database\Facade\DB;
 * LIMIT 20, 10
 */
 
+/** @var \InitORM\DBAL\DataMapper\Interfaces\DataMapperInterface $res */
 $res = DB::select('user.name as author_name', 'post.id', 'post.title')
     ->from('post')
     ->selfJoin('user', 'user.id=post.author')
@@ -127,7 +120,7 @@ $res = DB::select('user.name as author_name', 'post.id', 'post.title')
     ->orderBy('post.id', 'ASC')
     ->orderBy('post.created_at', 'DESC')
     ->offset(20)->limit(10)
-    ->read('post');
+    ->read();
     
 if($res->numRows() > 0){
     $results = $res->asAssoc()
@@ -141,7 +134,7 @@ if($res->numRows() > 0){
 #### Update
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 $data = [
     'title'     => 'New Title',
     'content'   => 'New Content',
@@ -159,17 +152,13 @@ $isUpdate = DB::where('id', 13)
 */
 if ($isUpdate) {
     // Success
-} else {
-    foreach (DB::getErrors() as $errMsg) {
-        echo $errMsg;
-    }
 }
 ```
 
 ##### Update Batch
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 $data = [
     [
         'id'        => 5,
@@ -183,7 +172,7 @@ $data = [
 ];
 
 $isUpdate = DB::where('status', '!=', 0)
-                ->updateBatch('post', $data, 'id');
+                ->updateBatch('id', 'post', $data);
     
 /**
 * This executes the following query.
@@ -200,17 +189,13 @@ $isUpdate = DB::where('status', '!=', 0)
 */
 if ($isUpdate) {
     // Success
-} else {
-    foreach (DB::getErrors() as $errMsg) {
-        echo $errMsg;
-    }
 }
 ```
 
 #### Delete
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 $isDelete = DB::where('id', 13)
                 ->delete('post');
@@ -222,18 +207,15 @@ $isDelete = DB::where('id', 13)
 */
 if ($isUpdate) {
     // Success
-} else {
-    foreach (DB::getErrors() as $errMsg) {
-        echo $errMsg;
-    }
 }
 ```
 
 ### RAW
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
+/** @var \InitORM\DBAL\DataMapper\Interfaces\DataMapperInterface $res */
 $res = DB::query("SELECT id FROM post WHERE user_id = :id", [
     ':id'   => 5
 ]);
@@ -242,12 +224,13 @@ $res = DB::query("SELECT id FROM post WHERE user_id = :id", [
 #### Builder for RAW
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
+/** @var \InitORM\DBAL\DataMapper\Interfaces\DataMapperInterface $res */
 $res = DB::select(DB::raw("CONCAT(name, ' ', surname) AS fullname"))
         ->where(DB::raw("title = '' AND (status = 1 OR status = 0)"))
         ->limit(5)
-        ->get('users');
+        ->read('users');
         
 /**
  * SELECT CONCAT(name, ' ', surname) AS fullname 
@@ -269,7 +252,7 @@ This library was developed with the thought that you would work with a single da
 If you want to work with a different non-global connection, use the `connect()` method.
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 DB::connect([
     'dsn'       => 'mysql:host=localhost;port=3306;dbname=test;charset=utf8mb4',
@@ -310,7 +293,7 @@ class Posts extends \InitPHP\Database\Model
     /**
      * If not specified, \InitPHP\Database\Entity::class is used by default.
      * 
-     * @var \InitPHP\Database\Orm\Entity|string
+     * @var string<\InitPHP\Database\Entity>
      */
     protected $entity = \App\Entities\PostEntity::class;
 
@@ -324,9 +307,9 @@ class Posts extends \InitPHP\Database\Model
     /**
      * The name of the PRIMARY KEY column. If not, define it as NULL.
      * 
-     * @var null|string
+     * @var string
      */
-    protected ?string $schemaId = 'id';
+    protected string $schemaId = 'id';
 
     /**
      * Specify FALSE if you want the data to be permanently deleted.
@@ -372,7 +355,7 @@ The most basic example of a entity class would look like this.
 ```php
 namespace App\Entities;
 
-class PostEntity extends \InitPHP\Database\ORM\Entity 
+class PostEntity extends \InitPHP\Database\Entity 
 {
     /**
      * An example of a getter method for the "post_title" column.
@@ -406,7 +389,7 @@ Below I have mentioned some developer tools that you can use during and after de
 ### Logger
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 DB::createImmutable([
     'dsn'       => 'mysql:host=localhost;dbname=test;port=3306;charset=utf8mb4;',
@@ -424,7 +407,7 @@ _Note :_ You can define variables such as `{year}`, `{month}`, `{day}` in the fi
 - You can also define an object with the `critical` method. The database library will pass the log message to this method as a parameter. Or define it as callable array to use any method of the object.
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 class Logger {
     
@@ -450,7 +433,7 @@ DB::createImmutable([
 - Similarly it is possible to define it in a callable method.
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 DB::createImmutable([
     'dsn'       => 'mysql:host=localhost;dbname=test;port=3306;charset=utf8mb4;',
@@ -469,7 +452,7 @@ DB::createImmutable([
 Debug mode is used to include the executed SQL statement in the error message. *__It should only be activated in the development environment__*.
 
 ```php
-use \InitPHP\Database\Facade\DB;
+use \InitPHP\Database\DB;
 
 DB::createImmutable([
     'dsn'       => 'mysql:host=localhost;dbname=test;port=3306;charset=utf8mb4;',
@@ -485,11 +468,11 @@ DB::createImmutable([
 Profiler mode is a developer tool available in v3 and above. It is a feature that allows you to see the executed queries along with their execution times.
 
 ```php
-use InitPHP\Database\Facade\DB;
+use InitPHP\Database\DB;
 
 DB::enableQueryLog();
 
-DB::table('users')->where('name', 'John')->get();
+DB::table('users')->where('name', 'John')->read();
 
 var_dump(DB::getQueryLogs());
 
