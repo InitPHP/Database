@@ -7,179 +7,278 @@
  * @author      Muhammet ŞAFAK <info@muhammetsafak.com.tr>
  * @copyright   Copyright © 2022 Muhammet ŞAFAK
  * @license     ./LICENSE  MIT
- * @version     2.0.7
+ * @version     3.0
  * @link        https://www.muhammetsafak.com.tr
  */
 
 namespace InitPHP\Database\Utils;
 
-use InitPHP\Database\Database;
+use Closure;
+use Throwable;
+use InitORM\Database\Interfaces\DatabaseInterface;
+use InitORM\QueryBuilder\Exceptions\QueryBuilderException;
+use InitORM\QueryBuilder\QueryBuilderInterface;
+use InitORM\ORM\Interfaces\ModelInterface;
 
-final class Datatables
+/**
+ * @mixin QueryBuilderInterface
+ */
+class Datatables
 {
 
-    public const GET_REQUEST = 0;
+    private DatabaseInterface|ModelInterface $db;
 
-    public const POST_REQUEST = 1;
+    private array $request;
 
-    private Database $db;
-
-    private array $request = [];
+    private array $response = [
+        'draw'              => 0,
+        'recordsTotal'      => 0,
+        'recordsFiltered'   => 0,
+        'data'              => [],
+        'post'              => [],
+    ];
 
     private array $columns = [];
 
-    private int $total_row = 0;
+    private array $renders = [];
 
-    private int $total_filtered_row = 0;
+    private array $builder = [];
 
-    private array $results;
+    private bool $orderByReset = true;
 
-    private int $draw = 0;
+    private array $permanentSelect = [];
 
-    public function __construct(Database $db, $columns, $method = self::GET_REQUEST)
+    public function __construct(DatabaseInterface|ModelInterface $db)
     {
+        $this->request = array_merge($_GET ?? [], $_POST ?? []);
+
+        if ($requestBody = @file_get_contents("php://input")) {
+            if (is_array($jsonBody = json_decode($requestBody, true))) {
+                $this->request = array_merge($this->request, $jsonBody);
+            }
+        }
         $this->db = $db;
-
-        switch ($method) {
-            case self::GET_REQUEST:
-                $this->request = $_GET ?? [];
-                break;
-            case self::POST_REQUEST:
-                $this->request = $_POST ?? [];
-                break;
-        }
-        $this->columns = $columns;
-
-        $this->total_row = $this->db->count();
-
-        $this->filterQuery();
-        $this->orderQuery();
-        $this->total_filtered_row = $this->db->count();
-        $this->limitQuery();
-        $this->results = $this->db->get()->toArray();
-
-        if(isset($this->request['draw'])){
-            $this->draw = (int)$this->request['draw'];
-        }
     }
 
+    public function __call(string $name, array $arguments)
+    {
+        $this->builder[] = [
+            'method'            => $name,
+            'arguments'         => $arguments,
+        ];
+
+        return $this;
+    }
+
+    /**
+     * @return string
+     * @throws Throwable
+     */
     public function __toString(): string
     {
-        return \json_encode($this->getResults());
+        return json_encode($this->toArray());
     }
 
-    public function getResults(): array
+    /**
+     * @return array
+     * @throws Throwable
+     */
+    public function toArray(): array
     {
-        return [
-            'draw'              => $this->draw,
-            'recordsTotal'      => $this->total_row,
-            'recordsFiltered'   => $this->total_filtered_row,
-            'data'              => $this->output_prepare()
+        $this->handle();
+        return $this->response;
+    }
+
+    /**
+     * @return $this
+     * @throws Throwable
+     */
+    public function handle(): self
+    {
+        $this->filterQuery();
+
+        $totalRow = $this->getCount();
+
+        $res = $this->orderQuery()
+            ->limitQuery()
+            ->getResults();
+
+        if (!empty($this->renders)) {
+            foreach ($res as &$row) {
+                foreach ($row as $column => &$value) {
+                    if (!isset($this->renders[$column])) {
+                        continue;
+                    }
+                    $value = call_user_func_array($this->renders[$column], [$value, &$row]);
+                }
+            }
+        }
+
+        $this->response = [
+            'draw'              => $this->request['draw'] ?? 0,
+            'recordsTotal'      => $totalRow,
+            'recordsFiltered'   => $totalRow,
+            'data'              => $res,
+            'post'              => $this->request,
         ];
+
+        return $this;
     }
 
-
-    private function orderQuery()
+    /**
+     * @param string ...$select
+     * @return $this
+     */
+    public function addPermanentSelect(string ...$select): self
     {
-        $columns = $this->columns;
-        if(!isset($this->request['order'])){
-            return;
+        foreach ($select as $sel) {
+            $this->select($sel);
+            $this->permanentSelect[] = $sel;
         }
-        $count = \count($this->request['order']);
-        $dtColumns = $this->pluck($columns, 'dt');
-        for($i = 0; $i < $count; ++$i){
-            $columnId = \intval($this->request['order'][$i]['column']);
-            $reqColumn = $this->request['columns'][$columnId];
-            $columnId = \array_search($reqColumn['data'], $dtColumns);
+
+        return $this;
+    }
+
+    /**
+     * @param string|null ...$columns
+     * @return $this
+     */
+    public function setColumns(?string ...$columns): self
+    {
+        $dt = count($this->columns) - 1;
+        foreach ($columns as $column) {
+            $this->columns[] = [
+                'db'    => $column,
+                'dt'    => ++$dt,
+            ];
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param string $column
+     * @param Closure $render
+     * @return $this
+     */
+    public function addRender(string $column, Closure $render): self
+    {
+        $this->renders[$column] = $render;
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function orderBySave(): self
+    {
+        $this->orderByReset = false;
+
+        return $this;
+    }
+
+    /**
+     * @return int
+     * @throws Throwable
+     */
+    private function getCount(): int
+    {
+        if (!empty($this->permanentSelect)) {
+            foreach ($this->permanentSelect as $select) {
+                $this->db->select($select);
+            }
+        }
+        $isGroupBy = false;
+        foreach ($this->builder as $process) {
+            if (str_starts_with($process['method'], 'select') || str_starts_with($process['method'], 'orderBy')) {
+                continue;
+            }
+            if ($process['method'] === 'groupBy') {
+                if ($isGroupBy === false) {
+                    $this->db->selectCountDistinct(current($process['arguments']), 'data_length');
+                    $isGroupBy = true;
+                }
+                continue;
+            }
+            $this->db->{$process['method']}(...$process['arguments']);
+        }
+        $isGroupBy === false && $this->db->selectCount('*', 'data_length');
+        $res = $this->db->read();
+
+        return $res->numRows() > 0 ? $res->asAssoc()->row()['data_length'] : 0;
+    }
+
+    /**
+     * @return array
+     * @throws Throwable
+     */
+    private function getResults(): array
+    {
+        foreach ($this->builder as $process) {
+            $this->db->{$process['method']}(...$process['arguments']);
+        }
+        $res = $this->db->read();
+
+        return $res->numRows() > 0 ? $res->asAssoc()->rows() : [];
+    }
+
+    /**
+     * @return self
+     */
+    private function orderQuery(): self
+    {
+        if (empty($this->request['order']) || !is_array($this->request['order'])) {
+            return $this;
+        }
+        if ($this->orderByReset) {
+            foreach ($this->builder as $key => $builder) {
+                if (str_starts_with($builder['method'], 'orderBy')) {
+                    unset($this->builder[$key]);
+                }
+            }
+        }
+        $columns = $this->columns;
+        $count = count($this->request['order']);
+        for ($i = 0; $i < $count; ++$i) {
+            $columnId = intval($this->request['order'][$i]['column']);
             $column = $columns[$columnId];
-            if(($reqColumn['orderable'] ?? 'false') != 'true' || !isset($column['db'])){
+            if (!isset($column['db'])) {
                 continue;
             }
-            $dir = ($this->request['order'][$i]['dir'] ?? 'asc') === 'asc' ? 'ASC' : 'DESC';
-            $this->db->orderBy($column['db'], $dir);
+            $dir = strtolower($this->request['order'][$i]['dir']) === 'asc' ? 'ASC' : 'DESC';
+            $this->db->orderBy($this->db->raw($column['db']), $dir);
         }
+
+        return $this;
     }
 
-    private function filterQuery()
+    /**
+     * @return void
+     * @throws QueryBuilderException
+     */
+    private function filterQuery(): void
     {
-        $columns = $this->columns;
-        $dtColumns = $this->pluck($columns, 'dt');
-        $str = $this->request['search']['value'] ?? '';
-        if($str === '' || !isset($this->request['columns'])){
+        $search = $this->request['search']['value'] ?? null;
+        if (empty($search) || empty($this->columns)) {
             return;
         }
-        $columnsCount = \count($this->request['columns']);
-        $this->db->group(function (Database $db) use ($str, $dtColumns, $columns, $columnsCount) {
-            for ($i = 0; $i < $columnsCount; ++$i) {
-                $reqColumn = $this->request['columns'][$i];
-                $columnId = \array_search($reqColumn['data'], $dtColumns);
-                $column = $columns[$columnId];
-                if(empty($column['db'])){
-                    continue;
-                }
-                $db->orLike($column['db'], $str);
+        $this->db->group(function (QueryBuilderInterface $builder) use ($search) {
+            foreach ($this->columns as $column) {
+                $builder->orLike($this->db->raw($column['db']), $search);
             }
+            return $builder;
         });
-        if(isset($this->request['columns'])){
-            for ($i = 0; $i < $columnsCount; ++$i) {
-                $reqColumn = $this->request['columns'][$i];
-                $columnId = \array_search($reqColumn['data'], $dtColumns);
-                $column = $columns[$columnId];
-                $str = $reqColumn['search']['value'] ?? '';
-                if(($reqColumn['searchable'] ?? 'false') != 'true' || $str == '' || empty($column['db'])){
-                    continue;
-                }
-                $this->db->like($column['db'], $str);
-            }
-        }
     }
 
-    private function limitQuery()
+    private function limitQuery(): self
     {
-        if(isset($this->request['start']) && $this->request['length'] != -1){
-            $this->db->offset((int)$this->request['start'])
-                ->limit((int)$this->request['length']);
-        }
-    }
-
-    private function output_prepare(): array
-    {
-        $out = [];
-        $columns = $this->columns;
-        $data = $this->results;
-        $dataCount = \count($data);
-        $columnCount = \count($columns);
-
-        for ($i = 0; $i < $dataCount; ++$i) {
-            $row = [];
-
-            for ($y = 0; $y < $columnCount; ++$y) {
-                $column = $columns[$y];
-                if(isset($column['formatter'])){
-                    $row[$column['dt']] = \call_user_func_array($column['formatter'], (empty($column['db']) ? [$data[$i]] : [$data[$i][$column['db']], $data[$i]]));
-                }else{
-                    $row[$column['dt']] = !empty($column['db']) ? $data[$i][$column['db']] : '';
-                }
-            }
-
-            $out[] = $row;
+        if (isset($this->request['start']) && $this->request['length'] != -1) {
+            $this->offset($this->request['start'])
+                ->limit($this->request['length']);
         }
 
-
-        return $out;
-    }
-
-    private function pluck(array $array, string $prop): array
-    {
-        $out = [];
-        $len = \count($array);
-        for ($i = 0; $i < $len; ++$i) {
-            if(empty($array[$i][$prop])){
-                continue;
-            }
-            $out[$i] = $array[$i][$prop];
-        }
-        return $out;
+        return $this;
     }
 
 }
