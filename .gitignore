@@ -4,5 +4,9 @@
 /vendor/
 /composer.lock
 /.phpunit.result.cache
+/.phpunit.cache/
+/.phpcs-cache
+/.php-cs-fixer.cache
+/build/
 /nbproject/private/
 /*.log

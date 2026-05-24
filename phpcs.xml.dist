@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<ruleset name="InitPHP Database">
+    <description>PSR-12 baseline for InitPHP/Database.</description>
+
+    <file>src</file>
+    <file>tests</file>
+
+    <arg name="basepath" value="."/>
+    <arg name="colors"/>
+    <arg name="parallel" value="4"/>
+    <arg value="np"/>
+
+    <rule ref="PSR12"/>
+
+    <config name="php_version" value="80100"/>
+</ruleset>
