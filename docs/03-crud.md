@@ -125,6 +125,60 @@ DB::where('id', 13)->delete('posts');
 
 When working through a `Model` with `$useSoftDeletes = true`, this becomes a soft delete by default — pass `$purge = true` to bypass the soft-delete path. See [04 — Models](04-models.md).
 
+## REPLACE INTO / UPSERT
+
+The query builder has no native `REPLACE INTO` (or "upsert") method — the operation is not standard SQL and the exact spelling differs from one driver to the next. Reach for `DB::query()` with raw SQL when you need it; every driver-specific dialect goes through the same prepared-statement path.
+
+### MySQL / MariaDB / SQLite — `REPLACE INTO`
+
+```php
+DB::query(
+    'REPLACE INTO items (id, name) VALUES (:id, :name)',
+    [':id' => 1, ':name' => 'Alice']
+);
+```
+
+`REPLACE INTO` deletes a conflicting row and inserts the new one — be aware that this fires `ON DELETE` triggers and reissues auto-increment IDs. SQLite supports the same syntax (and also accepts `INSERT OR REPLACE INTO` as a synonym).
+
+### PostgreSQL — `INSERT ... ON CONFLICT`
+
+```php
+DB::query(
+    'INSERT INTO items (id, name) VALUES (:id, :name)
+     ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name',
+    [':id' => 1, ':name' => 'Alice']
+);
+```
+
+`ON CONFLICT` is generally the better choice when it's available: no DELETE happens, triggers behave normally, and the conflict target is explicit.
+
+### MySQL 8 — `INSERT ... ON DUPLICATE KEY UPDATE`
+
+```php
+DB::query(
+    'INSERT INTO items (id, name) VALUES (:id, :name)
+     ON DUPLICATE KEY UPDATE name = VALUES(name)',
+    [':id' => 1, ':name' => 'Alice']
+);
+```
+
+Same intent as PostgreSQL's `ON CONFLICT` — preferred over `REPLACE INTO` for the same reasons.
+
+### Batching upserts
+
+`DB::query()` takes one statement at a time. If you need to upsert a batch, run them inside a transaction so the round-trips are amortised and you get atomicity for free:
+
+```php
+DB::transaction(function ($db) use ($rows) {
+    foreach ($rows as $row) {
+        $db->query(
+            'REPLACE INTO items (id, name) VALUES (:id, :name)',
+            [':id' => $row['id'], ':name' => $row['name']]
+        );
+    }
+});
+```
+
 ## Raw SQL
 
 When the query is faster to write by hand:
