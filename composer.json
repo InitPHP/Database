@@ -25,7 +25,7 @@
     "require": {
         "php": ">=8.0",
         "ext-pdo": "*",
-        "initorm/orm": "^1.0"
+        "initorm/orm": "^2.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.4"
