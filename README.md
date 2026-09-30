@@ -2,6 +2,7 @@
 
 A Composer-friendly, batteries-included facade over the [InitORM](https://github.com/InitORM) stack — query builder, DBAL connection, ORM models and entities — plus a server-side helper for [DataTables.js](https://datatables.net/).
 
+[![Designed & Maintained with Tan](https://www.muhammetsafak.com.tr/badges/designed-maintained-with-tan.svg)](https://www.muhammetsafak.com.tr/en/tan/)
 [![CI](https://github.com/InitPHP/Database/actions/workflows/ci.yml/badge.svg)](https://github.com/InitPHP/Database/actions/workflows/ci.yml)
 [![Latest Stable Version](https://poser.pugx.org/initphp/database/v)](https://packagist.org/packages/initphp/database)
 [![Total Downloads](https://poser.pugx.org/initphp/database/downloads)](https://packagist.org/packages/initphp/database)
