@@ -96,7 +96,7 @@ final class Datatables
     public function __construct(
         private readonly DatabaseInterface|ModelInterface $db,
         ?RequestParser $request = null,
-        ?Renderer $renderer = null
+        ?Renderer $renderer = null,
     ) {
         $this->request  = $request ?? RequestParser::fromGlobals();
         $this->renderer = $renderer ?? new Renderer();

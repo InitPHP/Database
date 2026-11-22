@@ -23,6 +23,4 @@ use InitORM\Database\Database as InitORMDatabase;
  * stacks; if the wrapper ever needs real behaviour, it should be added to
  * upstream {@see InitORMDatabase} (or composed, not inherited) instead.
  */
-class Database extends InitORMDatabase
-{
-}
+class Database extends InitORMDatabase {}

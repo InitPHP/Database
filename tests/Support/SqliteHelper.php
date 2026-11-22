@@ -55,13 +55,13 @@ final class SqliteHelper
                 email  TEXT    NOT NULL,
                 active INTEGER NOT NULL DEFAULT 1,
                 score  INTEGER
-            )'
+            )',
         );
         $pdo->exec(
             "INSERT INTO users (name, email, active, score) VALUES
                 ('Alice', 'alice@example.com', 1, 42),
                 ('Bob',   'bob@example.com',   0, 13),
-                ('Carol', 'carol@example.com', 1, 99)"
+                ('Carol', 'carol@example.com', 1, 99)",
         );
     }
 
@@ -77,7 +77,7 @@ final class SqliteHelper
                 id      INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 title   TEXT    NOT NULL
-            )'
+            )',
         );
         $pdo->exec(
             "INSERT INTO posts (user_id, title) VALUES
@@ -86,7 +86,7 @@ final class SqliteHelper
                 (2, 'Bob only'),
                 (3, 'Carol first'),
                 (3, 'Carol second'),
-                (3, 'Carol third')"
+                (3, 'Carol third')",
         );
     }
 }

@@ -18,6 +18,4 @@ use InitORM\ORM\Model as InitORMModel;
  *
  * No behaviour lives here on purpose — see the same note on {@see Database}.
  */
-abstract class Model extends InitORMModel
-{
-}
+abstract class Model extends InitORMModel {}

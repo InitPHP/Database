@@ -26,7 +26,7 @@ final class RendererTest extends TestCase
     public function testRegisteredCallbackTransformsTheTargetColumn(): void
     {
         $renderer = new Renderer();
-        $renderer->add('name', fn (string $value): string => strtoupper($value));
+        $renderer->add('name', fn(string $value): string => strtoupper($value));
 
         $output = $renderer->apply([
             ['id' => 1, 'name' => 'Alice'],
@@ -41,8 +41,8 @@ final class RendererTest extends TestCase
     public function testCallbackReceivesTheFullRow(): void
     {
         $renderer = new Renderer();
-        $renderer->add('full_name', static fn (?string $value, array $row): string =>
-            ($row['first'] ?? '') . ' ' . ($row['last'] ?? ''));
+        $renderer->add('full_name', static fn(?string $value, array $row): string
+            => ($row['first'] ?? '') . ' ' . ($row['last'] ?? ''));
 
         $output = $renderer->apply([
             ['first' => 'Ada', 'last' => 'Lovelace', 'full_name' => ''],
@@ -54,7 +54,7 @@ final class RendererTest extends TestCase
     public function testColumnsWithoutAnyRendererPassThrough(): void
     {
         $renderer = new Renderer();
-        $renderer->add('only_this', fn ($v) => 'X');
+        $renderer->add('only_this', fn($v) => 'X');
 
         $output = $renderer->apply([['only_this' => 'a', 'untouched' => 'b']]);
 
@@ -65,7 +65,7 @@ final class RendererTest extends TestCase
     public function testNonAssociativeRowsArePassedThroughUnchanged(): void
     {
         $renderer = new Renderer();
-        $renderer->add('name', fn ($v) => 'X');
+        $renderer->add('name', fn($v) => 'X');
 
         $object = (object) ['name' => 'Alice'];
         $output = $renderer->apply([$object]);
@@ -76,8 +76,8 @@ final class RendererTest extends TestCase
     public function testReAddingAColumnOverwritesThePreviousRenderer(): void
     {
         $renderer = new Renderer();
-        $renderer->add('name', fn ($v) => 'first');
-        $renderer->add('name', fn ($v) => 'second');
+        $renderer->add('name', fn($v) => 'first');
+        $renderer->add('name', fn($v) => 'second');
 
         $output = $renderer->apply([['name' => 'whatever']]);
 

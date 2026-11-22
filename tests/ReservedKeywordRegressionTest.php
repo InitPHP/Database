@@ -46,13 +46,13 @@ final class ReservedKeywordRegressionTest extends TestCase
                 title    TEXT,
                 "order"  INTEGER,
                 "select" TEXT
-            )'
+            )',
         );
         $this->connection->getPDO()->exec(
             "INSERT INTO posts (title, \"order\", \"select\") VALUES
                 ('First',  1, 'a'),
                 ('Second', 2, 'b'),
-                ('Third',  3, 'c')"
+                ('Third',  3, 'c')",
         );
     }
 
@@ -129,7 +129,7 @@ final class ReservedKeywordRegressionTest extends TestCase
             $logs[0]['query'],
             'Reserved identifiers must be emitted in their quoted form. If this assertion fails, '
             . 'upstream initorm/query-builder stopped escaping identifiers — file a bug there before '
-            . 'shipping a release.'
+            . 'shipping a release.',
         );
     }
 }

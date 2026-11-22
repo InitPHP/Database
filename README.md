@@ -25,7 +25,7 @@ If a feature is documented for InitORM, it works here under the InitPHP namespac
 
 ## Requirements
 
-- PHP **8.1** or later
+- PHP **8.2** or later
 - `ext-pdo` and a PDO driver for your target database (`pdo_mysql`, `pdo_pgsql`, `pdo_sqlite`, …)
 
 ## Installation
@@ -99,7 +99,7 @@ Org-wide guidelines (PSR-12, `declare(strict_types=1)`, Conventional Commits, PH
 Local checks before opening a PR:
 
 ```bash
-composer qa     # phpcs + phpstan + phpunit
+composer qa     # php-cs-fixer + phpstan + phpunit
 composer cs-fix # auto-format
 ```
 
