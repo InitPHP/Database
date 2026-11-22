@@ -12,7 +12,7 @@
 
 | Area | 4.x | 5.0 |
 |---|---|---|
-| PHP minimum | declared `>= 8.0` (broken — install failed there) | `^8.1` |
+| PHP minimum | declared `>= 8.0` (broken — install failed there) | `^8.2` |
 | `DB::createImmutable()` second call | silently overwrote the shared instance | throws `DatabaseException` |
 | `DB::createImmutable()` return type | `void` | `DatabaseInterface` |
 | Swapping the shared instance | call `createImmutable()` again | call `DB::replaceImmutable($connection)` |
@@ -27,7 +27,7 @@
 
 ### 1. Bump PHP to 8.2+
 
-Update your CI / Dockerfile / runtime to PHP 8.2 or later. The 5.0 release raised the floor from 8.0 to 8.1; the current release requires `^8.2`. The package will not install on older versions.
+Update your CI / Dockerfile / runtime to PHP 8.2 or later. The 5.0 release raises the floor from 8.0 to `^8.2`. The package will not install on older versions.
 
 ```diff
 - "php": "8.0",
