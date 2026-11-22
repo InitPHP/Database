@@ -115,7 +115,7 @@ You called `DB::select(...)` (or any method) before `DB::createImmutable([...])`
 
 ### `An immutable Database instance has already been set`
 
-You called `DB::createImmutable([...])` a second time. In 5.0 this throws. Use `DB::replaceImmutable($connection)` for explicit swapping. See [Migration Guide](Migration-Guide.md).
+You called `DB::createImmutable([...])` a second time. Since 4.0 this throws. Use `DB::replaceImmutable($connection)` for explicit swapping. See [Migration Guide](Migration-Guide.md).
 
 ### Tests bleed state between cases
 
@@ -169,11 +169,11 @@ Inside the mutator body, you wrote `$this->column = $value` instead of `$this->s
 
 ### `recordsTotal` equals `recordsFiltered` even during a search
 
-You are on the old 4.x. Upgrade to 5.0 — the helper now computes them separately. See [Migration Guide](Migration-Guide.md).
+You are on 3.x. Upgrade to 4.0 or later — the helper now computes them separately. See [Migration Guide](Migration-Guide.md).
 
 ### `TypeError: limit(): Argument #1 ($limit) must be of type int, string given`
 
-You are on 4.x and the DataTables payload arrived with `length` as a string. Upgrade to 5.0 — the new `RequestParser` coerces.
+You are on 3.x and the DataTables payload arrived with `length` as a string. Upgrade to 4.0 or later — the new `RequestParser` coerces.
 
 ### DataTables shows "Loading..." indefinitely
 

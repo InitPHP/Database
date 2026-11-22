@@ -77,7 +77,7 @@ Topic-by-topic guides live in [`docs/`](docs/Home.md):
 | 07 | [Query log](docs/Query-Logging.md) — `enableQueryLog` + the `log` connection channel |
 | 08 | [Datatables](docs/DataTables-Introduction.md) — server-side DataTables.js integration end-to-end |
 | 09 | [Multiple connections](docs/Multiple-Connections.md) — secondary databases via `DB::connect()` / `Model::$credentials` |
-| 10 | [Upgrading from 3.x / 4.x](docs/Migration-Guide.md) — breaking changes in 5.0 and the migration path |
+| 10 | [Upgrading from 3.x / 4.x](docs/Migration-Guide.md) — breaking changes in 4.0, the PHP floor of 5.0 and the migration path |
 
 ## At a glance
 
