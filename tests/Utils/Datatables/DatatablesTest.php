@@ -169,7 +169,7 @@ final class DatatablesTest extends TestCase
         $datatables
             ->from('users')
             ->setColumns('id', 'name')
-            ->addRender('name', fn (string $name): string => '*' . $name . '*');
+            ->addRender('name', fn(string $name): string => '*' . $name . '*');
 
         $rows = $datatables->toArray()['data'];
         $names = array_column($rows, 'name');

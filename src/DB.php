@@ -33,9 +33,7 @@ final class DB
     /**
      * Prevent instantiation — this class is a pure static facade.
      */
-    private function __construct()
-    {
-    }
+    private function __construct() {}
 
     /**
      * Build a Database from the supplied connection (array or
@@ -54,7 +52,7 @@ final class DB
         if (self::$database !== null) {
             throw new DatabaseException(
                 'An immutable Database instance has already been set. '
-                . 'Call DB::replaceImmutable() to swap it explicitly.'
+                . 'Call DB::replaceImmutable() to swap it explicitly.',
             );
         }
 
@@ -72,7 +70,7 @@ final class DB
      * @param array<string, mixed>|ConnectionInterface|DatabaseInterface|null $connection
      */
     public static function replaceImmutable(
-        array|ConnectionInterface|DatabaseInterface|null $connection
+        array|ConnectionInterface|DatabaseInterface|null $connection,
     ): ?DatabaseInterface {
         if ($connection === null) {
             self::$database = null;
@@ -107,7 +105,7 @@ final class DB
     {
         if (self::$database === null) {
             throw new DatabaseException(
-                'No immutable Database instance is configured. Call DB::createImmutable($connection) first.'
+                'No immutable Database instance is configured. Call DB::createImmutable($connection) first.',
             );
         }
 

@@ -33,9 +33,7 @@ final class RequestParser
      *        from whichever transport(s) the caller chose (query string, form
      *        body, JSON body).
      */
-    public function __construct(private readonly array $payload)
-    {
-    }
+    public function __construct(private readonly array $payload) {}
 
     /**
      * Build a parser from the live request — $_GET + $_POST merged, plus the

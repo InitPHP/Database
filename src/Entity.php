@@ -22,6 +22,4 @@ use InitORM\ORM\Entity as InitORMEntity;
  * bypasses {@see InitORMEntity::__set()} and creates a dynamic property
  * instead — deprecated in PHP 8.2+, fatal in a future PHP version.
  */
-class Entity extends InitORMEntity
-{
-}
+class Entity extends InitORMEntity {}

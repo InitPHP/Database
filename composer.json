@@ -32,15 +32,15 @@
         }
     ],
     "require": {
-        "php": "^8.1",
+        "php": "^8.2",
         "ext-pdo": "*",
         "initorm/orm": "^2.0"
     },
     "require-dev": {
         "ext-pdo_sqlite": "*",
+        "friendsofphp/php-cs-fixer": "^3.65",
         "phpstan/phpstan": "^1.12",
-        "phpunit/phpunit": "^10.5",
-        "squizlabs/php_codesniffer": "^3.10"
+        "phpunit/phpunit": "^10.5"
     },
     "suggest": {
         "ext-pdo_mysql": "Required for MySQL / MariaDB connections.",
@@ -60,9 +60,10 @@
     "scripts": {
         "test": "phpunit",
         "test:coverage": "phpunit --coverage-text --coverage-html=build/coverage",
-        "cs": "phpcs",
-        "cs-ci": "phpcs --warning-severity=0",
-        "cs-fix": "phpcbf",
+        "cs": "@cs-check",
+        "cs-ci": "@cs-check",
+        "cs-check": "php-cs-fixer fix --dry-run --diff",
+        "cs-fix": "php-cs-fixer fix",
         "stan": "phpstan analyse",
         "qa": [
             "@cs-ci",

@@ -90,7 +90,7 @@ final class RequestParserTest extends TestCase
 
         self::assertSame(
             [[2, 'ASC'], [1, 'DESC'], [3, 'DESC']],
-            $parser->orders()
+            $parser->orders(),
         );
     }
 
