@@ -43,7 +43,7 @@ The package re-exports the [InitORM](https://github.com/InitORM) stack under the
 - **Building an ORM layer?** See [Models](Models.md) and [Entities](Entities.md).
 - **Wiring up DataTables.js?** Start with [DataTables Introduction](DataTables-Introduction.md).
 - **Need a specific pattern?** Browse the [Recipes](Recipes.md).
-- **Upgrading from 4.x?** Read the [Migration Guide](Migration-Guide.md).
+- **Upgrading from 3.x or 4.x?** Read the [Migration Guide](Migration-Guide.md).
 
 ## Feature matrix
 

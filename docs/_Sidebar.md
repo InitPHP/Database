@@ -42,6 +42,6 @@
 - [Reserved Keywords](Reserved-Keywords.md)
 
 **Migration & Help**
-- [Migration Guide (4.x → 5.0)](Migration-Guide.md)
+- [Migration Guide (3.x → 4.0 → 5.0)](Migration-Guide.md)
 - [FAQ](FAQ.md)
 - [Troubleshooting](Troubleshooting.md)

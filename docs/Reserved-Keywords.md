@@ -1,6 +1,6 @@
 # Reserved Keywords
 
-A column named after a SQL reserved keyword — `order`, `select`, `from`, `where`, `group`, `desc`, `key` — used to be a problem in earlier versions of this package. As of 5.0 it **is not**. The underlying [InitORM QueryBuilder](https://github.com/InitORM/QueryBuilder) escapes every identifier driver-specifically, and the package has regression tests in place to lock this behaviour in.
+A column named after a SQL reserved keyword — `order`, `select`, `from`, `where`, `group`, `desc`, `key` — used to be a problem in earlier versions of this package. As of 3.0 it **is not**. The underlying [InitORM QueryBuilder](https://github.com/InitORM/QueryBuilder) escapes every identifier driver-specifically, and the package has regression tests in place to lock this behaviour in.
 
 ## The short version
 
@@ -163,7 +163,7 @@ Both statements compile and run on MySQL, PostgreSQL, and SQLite without changes
 
 ## History — why this used to be an issue
 
-In `initphp/database` 2.x (before the 3.0 rewrite onto InitORM), the package emitted identifiers bare. A column named `order` produced SQL like `SET order = 1`, which MySQL rejects with `error 1064`. The 3.0 release migrated the package to InitORM, which already escaped identifiers correctly, so the bug disappeared as a side-effect. The 5.0 release added the regression tests to keep it that way.
+In `initphp/database` 2.x (before the 3.0 rewrite onto InitORM), the package emitted identifiers bare. A column named `order` produced SQL like `SET order = 1`, which MySQL rejects with `error 1064`. The 3.0 release migrated the package to InitORM, which already escaped identifiers correctly, so the bug disappeared as a side-effect. The 4.0 release added the regression tests to keep it that way.
 
 If you see the v2 issue described on the issue tracker, it has been closed — that behaviour does not exist on supported versions.
 
@@ -171,4 +171,4 @@ If you see the v2 issue described on the issue tracker, it has been closed — t
 
 - [Query Builder](Query-Builder.md) — the broader API.
 - [Raw Queries](Raw-Queries.md) — when escaping is your responsibility.
-- [Migration Guide](Migration-Guide.md) — what else changed in 5.0.
+- [Migration Guide](Migration-Guide.md) — what else changed in 4.0 and 5.0.

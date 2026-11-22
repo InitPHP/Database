@@ -30,7 +30,7 @@ Anything PDO supports. The package ships per-driver SQL dialects for MySQL, Post
 
 ### Q. Why does my second `DB::createImmutable()` throw?
 
-That is the new 5.0 behaviour — `createImmutable()` enforces "set exactly once". If you need to swap the shared connection (test fixtures, multi-tenant routing), use `DB::replaceImmutable()`. See [Migration Guide](Migration-Guide.md).
+That is the behaviour since 4.0 — `createImmutable()` enforces "set exactly once". If you need to swap the shared connection (test fixtures, multi-tenant routing), use `DB::replaceImmutable()`. See [Migration Guide](Migration-Guide.md).
 
 ### Q. Can I use the package without `DB::createImmutable()` at all?
 
