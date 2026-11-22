@@ -64,20 +64,20 @@ foreach ($rows as $row) {
 
 ## Documentation
 
-Topic-by-topic guides live in [`docs/`](docs/):
+Topic-by-topic guides live in [`docs/`](docs/Home.md):
 
 | # | Guide |
 | --- | --- |
-| 01 | [Getting started](docs/01-getting-started.md) — install, connect, first query, debug & logging |
-| 02 | [Query Builder](docs/02-query-builder.md) — `select` / `where` / `join` / `groupBy` / `orderBy` / `limit` / raw |
-| 03 | [CRUD](docs/03-crud.md) — `create` / `read` / `update` / `delete` and their `*Batch` siblings |
-| 04 | [Models](docs/04-models.md) — table binding, soft deletes, timestamp columns, access gates |
-| 05 | [Entities](docs/05-entities.md) — attribute bag, accessor / mutator hooks (and the one PHP 8.2+ pitfall) |
-| 06 | [Transactions](docs/06-transactions.md) — automatic retry, dry-run / test mode |
-| 07 | [Query log](docs/07-query-log.md) — `enableQueryLog` + the `log` connection channel |
-| 08 | [Datatables](docs/08-datatables.md) — server-side DataTables.js integration end-to-end |
-| 09 | [Multiple connections](docs/09-multi-connection.md) — secondary databases via `DB::connect()` / `Model::$credentials` |
-| 10 | [Upgrading from 3.x / 4.x](docs/10-upgrading.md) — breaking changes in 5.0 and the migration path |
+| 01 | [Getting started](docs/Quick-Start.md) — install, connect, first query, debug & logging |
+| 02 | [Query Builder](docs/Query-Builder.md) — `select` / `where` / `join` / `groupBy` / `orderBy` / `limit` / raw |
+| 03 | [CRUD](docs/CRUD-Operations.md) — `create` / `read` / `update` / `delete` and their `*Batch` siblings |
+| 04 | [Models](docs/Models.md) — table binding, soft deletes, timestamp columns, access gates |
+| 05 | [Entities](docs/Entities.md) — attribute bag, accessor / mutator hooks (and the one PHP 8.2+ pitfall) |
+| 06 | [Transactions](docs/Transactions.md) — automatic retry, dry-run / test mode |
+| 07 | [Query log](docs/Query-Logging.md) — `enableQueryLog` + the `log` connection channel |
+| 08 | [Datatables](docs/DataTables-Introduction.md) — server-side DataTables.js integration end-to-end |
+| 09 | [Multiple connections](docs/Multiple-Connections.md) — secondary databases via `DB::connect()` / `Model::$credentials` |
+| 10 | [Upgrading from 3.x / 4.x](docs/Migration-Guide.md) — breaking changes in 5.0 and the migration path |
 
 ## At a glance
 
@@ -87,7 +87,7 @@ Topic-by-topic guides live in [`docs/`](docs/):
 - Entities with Laravel-style `getColumnAttribute()` / `setColumnAttribute()` hooks and dirty tracking via `getOriginal()`.
 - Transaction helper with retry attempts and a `testMode` flag that always rolls back.
 - Query log channel that accepts a file path (with `{year}`/`{month}`/`{day}` placeholders), a callable, or any object exposing a `critical()` method.
-- Server-side DataTables.js helper that handles search, sort, paging and per-column render callbacks — see [docs/08-datatables.md](docs/08-datatables.md).
+- Server-side DataTables.js helper that handles search, sort, paging and per-column render callbacks — see [docs/DataTables-Introduction.md](docs/DataTables-Introduction.md).
 
 ## Contributing
 
