@@ -61,7 +61,7 @@ The package ships its own CI pipeline; if you fork or contribute, install the de
 
 ```bash
 composer install
-composer qa     # phpcs + phpstan + phpunit
+composer qa     # php-cs-fixer (dry run) + phpstan + phpunit
 composer cs-fix # auto-format
 ```
 
@@ -69,7 +69,7 @@ composer cs-fix # auto-format
 |---|---|
 | PHPUnit | `phpunit.xml` |
 | PHPStan (level 6) | `phpstan.neon.dist` |
-| PHP_CodeSniffer (PSR-12) | `phpcs.xml.dist` |
+| PHP-CS-Fixer (PER-CS) | `.php-cs-fixer.dist.php` |
 
 ## Next
 
