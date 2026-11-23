@@ -37,7 +37,9 @@ DB::createImmutable([
     'password' => '...',
 ]);
 
-header('Content-Type: application/json');
+// Always send a JSON content type: the response echoes the request back in
+// "post", and a page served as text/html would run markup in it.
+header('Content-Type: application/json; charset=utf-8');
 
 echo (new Datatables(DB::getDatabase()))
         ->from('users')
@@ -58,13 +60,17 @@ $('#users').DataTable({
     ajax: '/api/users/datatables',
     columns: [
         { data: 'id',         title: 'ID' },
-        { data: 'name',       title: 'Name' },
-        { data: 'email',      title: 'Email' },
+        // DataTables writes cell values into the page as HTML. Text columns must
+        // use the text() renderer so that "<img onerror=…>" shows up as text.
+        { data: 'name',       title: 'Name',  render: $.fn.dataTable.render.text() },
+        { data: 'email',      title: 'Email', render: $.fn.dataTable.render.text() },
         { data: 'created_at', title: 'Created' }
     ]
 });
 </script>
 ```
+
+> **Escape cell values.** DataTables.js puts what the server returns into the page as HTML. Names, e-mail addresses and any other user-supplied column must go through `render: $.fn.dataTable.render.text()` on the client, or through `htmlspecialchars()` in a server-side [renderer](DataTables-Renderers.md#security--always-escape-on-the-way-out) when you build the HTML yourself. Otherwise a user who registers with `<img src=x onerror=…>` as their name runs script in the browser of whoever opens the table.
 
 The `columns[].data` keys on the client must match the column names you registered with `setColumns()` on the server. See [DataTables — Bootstrap recipe](Recipe-DataTables-Bootstrap.md) for a complete page.
 

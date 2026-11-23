@@ -117,9 +117,11 @@ That's the entire server side. Three database round-trips (`recordsTotal`, `reco
             },
             columns: [
                 { data: 'id',         title: 'ID' },
-                { data: 'name',       title: 'Name' },
-                { data: 'email',      title: 'Email' },
-                { data: 'role',       title: 'Role' },
+                // These columns hold user-supplied text, and DataTables inserts cell
+                // values as HTML: render them as text so markup is not executed.
+                { data: 'name',       title: 'Name',  render: $.fn.dataTable.render.text() },
+                { data: 'email',      title: 'Email', render: $.fn.dataTable.render.text() },
+                { data: 'role',       title: 'Role',  render: $.fn.dataTable.render.text() },
                 { data: 'created_at', title: 'Joined' },
                 { data: 'actions',    title: '', orderable: false, searchable: false }
             ],
@@ -137,6 +139,7 @@ That's the entire server side. Three database round-trips (`recordsTotal`, `reco
 |---|---|
 | `setColumns('id', 'name', ...)` order | `columns[].data` order |
 | `setColumns(null)` for actions | `orderable: false, searchable: false` |
+| user-supplied text (`name`, `email`, `role`) | `render: $.fn.dataTable.render.text()` — cells are inserted as HTML |
 | `addPermanentSelect("'' AS actions")` | gives the renderer something to attach to |
 | `addRender('actions', fn)` | renders the cell HTML |
 | `where('active', 1)` | invisible filter — only active users ever leave the server |
@@ -179,6 +182,8 @@ The response will look like:
 If `Users` is already a Model with soft deletes:
 
 ```php
+header('Content-Type: application/json; charset=utf-8');
+
 echo (new Datatables(new App\Model\Users()))
     ->setColumns('id', 'name', 'email', 'role', 'created_at', null)
     // … renderers …
@@ -199,6 +204,8 @@ $dt->from('users');
 if ($activeOnly) {
     $dt->where('active', 1);
 }
+
+header('Content-Type: application/json; charset=utf-8');
 
 echo $dt->setColumns('id', 'name', 'email', 'role', 'created_at', null)
         ->addRender(/* … */);
