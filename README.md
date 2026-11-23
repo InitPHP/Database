@@ -91,7 +91,7 @@ Topic-by-topic guides live in [`docs/`](docs/Home.md):
 
 ## Contributing
 
-Org-wide guidelines (PSR-12, `declare(strict_types=1)`, Conventional Commits, PHPStan + PHPUnit on every PR) live in the InitPHP `.github` repo:
+Org-wide guidelines (PER-CS via php-cs-fixer, `declare(strict_types=1)`, Conventional Commits, PHPStan + PHPUnit on every PR) live in the InitPHP `.github` repo:
 
 - [CONTRIBUTING.md](https://github.com/InitPHP/.github/blob/main/CONTRIBUTING.md)
 - [CODE_OF_CONDUCT.md](https://github.com/InitPHP/.github/blob/main/CODE_OF_CONDUCT.md)
