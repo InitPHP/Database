@@ -154,7 +154,7 @@ use InitPHP\Database\Utils\Datatables\Renderer;
 
 $renderer = new Renderer();
 $renderer->add('email', fn (string $e) => '<a>' . htmlspecialchars($e, ENT_QUOTES, 'UTF-8') . '</a>');
-$renderer->add('name',  fn (string $n) => strtoupper($n));
+$renderer->add('name',  fn (string $n) => htmlspecialchars(strtoupper($n), ENT_QUOTES, 'UTF-8'));
 
 $dt = new Datatables($db, null, $renderer);
 $dt->setColumns('id', 'name', 'email');

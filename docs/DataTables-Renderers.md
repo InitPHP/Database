@@ -40,7 +40,11 @@ Now every `email` cell in the response is an `<a>` element. The unrendered `emai
 $dt->setColumns('id', 'first_name', 'last_name', 'full_name')
    ->addPermanentSelect('first_name', 'last_name')
    ->addRender('full_name', fn (mixed $_value, array $row) =>
-       trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''))
+       htmlspecialchars(
+           trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')),
+           ENT_QUOTES,
+           'UTF-8'
+       )
    );
 ```
 
@@ -48,7 +52,7 @@ $dt->setColumns('id', 'first_name', 'last_name', 'full_name')
 
 1. `setColumns()` declares it (so the client has an index for it).
 2. `addPermanentSelect()` ensures the source columns (`first_name`, `last_name`) ride along on every SELECT (see [Advanced](DataTables-Advanced.md)).
-3. The renderer composes the value from those siblings.
+3. The renderer composes the value from those siblings and escapes it, because the cell is inserted into the page as HTML.
 
 ## Formatting timestamps
 
@@ -87,8 +91,8 @@ $dt->from('users')
 // Client
 columns: [
     { data: 'id',      title: 'ID' },
-    { data: 'name',    title: 'Name' },
-    { data: 'actions', title: '',     orderable: false, searchable: false }
+    { data: 'name',    title: 'Name', render: $.fn.dataTable.render.text() }, // user text, no PHP renderer
+    { data: 'actions', title: '',     orderable: false, searchable: false } // HTML built (and escaped) in PHP
 ]
 ```
 
@@ -121,8 +125,8 @@ echo json_encode($response);
 `addRender()` overwrites any previous registration for the same column:
 
 ```php
-$dt->addRender('name', fn ($v) => strtoupper($v));
-$dt->addRender('name', fn ($v) => strtolower($v));
+$dt->addRender('name', fn ($v) => htmlspecialchars(strtoupper($v), ENT_QUOTES, 'UTF-8'));
+$dt->addRender('name', fn ($v) => htmlspecialchars(strtolower($v), ENT_QUOTES, 'UTF-8'));
 // strtolower wins.
 ```
 
