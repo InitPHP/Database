@@ -153,6 +153,15 @@ final class Upserter
         $columns = array_keys($row);
         $params  = [];
 
+        // Identifiers cannot be bound as parameters, and the column names come
+        // from the *keys* of $row. Allow only plain identifiers, so a key such as
+        // "name) VALUES (1); DROP TABLE items; --" can never reach the SQL.
+        foreach ([$table, $conflictColumn, ...$columns] as $identifier) {
+            if (preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/D', (string) $identifier) !== 1) {
+                throw new \InvalidArgumentException('Invalid identifier.');
+            }
+        }
+
         foreach ($row as $key => $value) {
             $params[':' . $key] = $value;
         }
@@ -177,7 +186,7 @@ final class Upserter
 }
 ```
 
-> The wrapper interpolates `$table` and `$conflictColumn` directly — identifiers cannot be bound. **Only call it with hard-coded strings**, never user input.
+> The wrapper interpolates `$table`, `$conflictColumn` and the **keys of `$row`** directly — identifiers cannot be bound. The check at the top rejects anything that is not a plain identifier, but it only guards the syntax, not which tables and columns are allowed: pass hard-coded table and column names, and never use `$_POST` (or any other request array) as `$row`. Build `$row` from the fixed set of fields you expect, as the example below does.
 
 Use it:
 

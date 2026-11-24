@@ -49,7 +49,11 @@ $dt->from('users')
    ->addPermanentSelect('users.role', 'users.last_login_at')
    ->setColumns('id', 'name', 'email')
    ->addRender('name', static fn (string $name, array $row) =>
-       sprintf('%s <small>(%s)</small>', htmlspecialchars($name), $row['role'])
+       sprintf(
+           '%s <small>(%s)</small>',
+           htmlspecialchars($name, ENT_QUOTES, 'UTF-8'),
+           htmlspecialchars((string) $row['role'], ENT_QUOTES, 'UTF-8')
+       )
    );
 ```
 
@@ -149,8 +153,8 @@ You almost never need this, but for completeness:
 use InitPHP\Database\Utils\Datatables\Renderer;
 
 $renderer = new Renderer();
-$renderer->add('email', fn (string $e) => '<a>' . $e . '</a>');
-$renderer->add('name',  fn (string $n) => strtoupper($n));
+$renderer->add('email', fn (string $e) => '<a>' . htmlspecialchars($e, ENT_QUOTES, 'UTF-8') . '</a>');
+$renderer->add('name',  fn (string $n) => htmlspecialchars(strtoupper($n), ENT_QUOTES, 'UTF-8'));
 
 $dt = new Datatables($db, null, $renderer);
 $dt->setColumns('id', 'name', 'email');

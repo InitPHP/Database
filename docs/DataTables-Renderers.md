@@ -40,7 +40,11 @@ Now every `email` cell in the response is an `<a>` element. The unrendered `emai
 $dt->setColumns('id', 'first_name', 'last_name', 'full_name')
    ->addPermanentSelect('first_name', 'last_name')
    ->addRender('full_name', fn (mixed $_value, array $row) =>
-       trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? ''))
+       htmlspecialchars(
+           trim(($row['first_name'] ?? '') . ' ' . ($row['last_name'] ?? '')),
+           ENT_QUOTES,
+           'UTF-8'
+       )
    );
 ```
 
@@ -48,7 +52,7 @@ $dt->setColumns('id', 'first_name', 'last_name', 'full_name')
 
 1. `setColumns()` declares it (so the client has an index for it).
 2. `addPermanentSelect()` ensures the source columns (`first_name`, `last_name`) ride along on every SELECT (see [Advanced](DataTables-Advanced.md)).
-3. The renderer composes the value from those siblings.
+3. The renderer composes the value from those siblings and escapes it, because the cell is inserted into the page as HTML.
 
 ## Formatting timestamps
 
@@ -87,8 +91,8 @@ $dt->from('users')
 // Client
 columns: [
     { data: 'id',      title: 'ID' },
-    { data: 'name',    title: 'Name' },
-    { data: 'actions', title: '',     orderable: false, searchable: false }
+    { data: 'name',    title: 'Name', render: $.fn.dataTable.render.text() }, // user text, no PHP renderer
+    { data: 'actions', title: '',     orderable: false, searchable: false } // HTML built (and escaped) in PHP
 ]
 ```
 
@@ -97,9 +101,10 @@ columns: [
 ## Mutating sibling columns
 
 ```php
-$dt->addRender('name', static fn (string $name, array $row) =>
-    $row['is_admin'] ? '👑 ' . $name : $name
-);
+$dt->addRender('name', static function (string $name, array $row): string {
+    $safe = htmlspecialchars($name, ENT_QUOTES, 'UTF-8'); // the cell is rendered as HTML
+    return $row['is_admin'] ? '👑 ' . $safe : $safe;
+});
 ```
 
 `$row` is passed by **value** — the helper copies it before invoking the renderer. So you can read sibling columns freely; you cannot use a renderer to mutate a sibling that has its own renderer running later.
@@ -111,6 +116,7 @@ $response = $dt->toArray();
 foreach ($response['data'] as $i => $row) {
     $response['data'][$i] = transformRow($row);
 }
+header('Content-Type: application/json; charset=utf-8'); // not text/html: "post" echoes the request
 echo json_encode($response);
 ```
 
@@ -119,8 +125,8 @@ echo json_encode($response);
 `addRender()` overwrites any previous registration for the same column:
 
 ```php
-$dt->addRender('name', fn ($v) => strtoupper($v));
-$dt->addRender('name', fn ($v) => strtolower($v));
+$dt->addRender('name', fn ($v) => htmlspecialchars(strtoupper($v), ENT_QUOTES, 'UTF-8'));
+$dt->addRender('name', fn ($v) => htmlspecialchars(strtolower($v), ENT_QUOTES, 'UTF-8'));
 // strtolower wins.
 ```
 
@@ -143,7 +149,16 @@ $dt->addRender('name', static fn (string $name) =>
 $dt->addRender('name', static fn (string $name) => "<strong>{$name}</strong>");
 ```
 
-DataTables.js sets cell innerHTML directly — anything you emit ends up in the DOM as-is.
+DataTables.js sets cell innerHTML directly — anything you emit ends up in the DOM as-is. That applies to columns **without** a renderer too: a plain `name` value goes into the cell unescaped. On the client, give every user-supplied text column `render: $.fn.dataTable.render.text()`:
+
+```js
+columns: [
+    { data: 'name',  title: 'Name',  render: $.fn.dataTable.render.text() },
+    { data: 'email', title: 'Email', render: $.fn.dataTable.render.text() }
+]
+```
+
+Do not combine the two on the same column: a column that already returns escaped HTML from PHP would be escaped a second time by `text()`. Choose one place per column.
 
 ## Renderers and the count queries
 
