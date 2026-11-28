@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- **PHP 8.2 or later** — older versions are not supported. The test matrix covers PHP 8.2, 8.3, 8.4 and 8.5.
+- **PHP 8.2 or later** — older versions are not supported. The test matrix covers PHP 8.2, 8.3, 8.4, 8.5 and 8.6.
 - **`ext-pdo`** — always required.
 - A PDO driver matching your target database — one of:
   - `ext-pdo_mysql` (MySQL / MariaDB)
