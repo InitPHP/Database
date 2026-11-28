@@ -20,7 +20,7 @@ So application code can refer to `\InitPHP\Database\Database` (matching the Comp
 
 ### Q. What PHP version is supported?
 
-PHP 8.2 and later. Tested on 8.2, 8.3, 8.4, 8.5. See [Installation](Installation.md).
+PHP 8.2 and later. Tested on 8.2, 8.3, 8.4, 8.5, 8.6. See [Installation](Installation.md).
 
 ### Q. Which databases work?
 

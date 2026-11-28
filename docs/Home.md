@@ -67,7 +67,7 @@ The package re-exports the [InitORM](https://github.com/InitORM) stack under the
 ## Package metadata
 
 - **License**: MIT
-- **Minimum PHP**: 8.2 (tested on 8.2, 8.3, 8.4, 8.5)
+- **Minimum PHP**: 8.2 (tested on 8.2, 8.3, 8.4, 8.5, 8.6)
 - **Runtime dependencies**: `ext-pdo`, `initorm/orm ^2.0`
 - **Suggested PDO drivers**: `ext-pdo_mysql`, `ext-pdo_pgsql`, `ext-pdo_sqlite`
 - **Packagist**: [`initphp/database`](https://packagist.org/packages/initphp/database)
